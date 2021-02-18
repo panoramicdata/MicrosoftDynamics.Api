@@ -1,6 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using Simple.OData.Client;
-using System;
 using Xunit.Abstractions;
 
 namespace MicrosoftDynamics.Api.Test
@@ -13,23 +11,10 @@ namespace MicrosoftDynamics.Api.Test
 		public TestBase(ITestOutputHelper testOutputHelper)
 		{
 			Logger = testOutputHelper.BuildLoggerFor<TestBase>();
-
 			TestConfig = TestConfig.Load();
+			TestConfig.Options.Logger = testOutputHelper.BuildLoggerFor<MicrosoftDynamicsClient>();
 		}
 
-		protected MicrosoftDynamicsClient GetDynamicsIms()
-		{
-			//var microsoftDynamicsClient = new MicrosoftDynamicsClient(new ODataClientSettings
-			//{
-			//	Credentials = new ClientSecrets
-			//	{
-			//		Id = TestConfig.ClientId,
-			//		Secret = TestConfig.ClientSecret,
-			//	}
-			//});
-
-			//return microsoftDynamicsClient;
-			throw new NotImplementedException();
-		}
+		protected MicrosoftDynamicsClient Client => new(TestConfig.Options);
 	}
 }
