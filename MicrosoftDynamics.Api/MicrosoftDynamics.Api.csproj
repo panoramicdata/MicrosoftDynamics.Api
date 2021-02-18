@@ -4,6 +4,26 @@
 	  <TargetFramework>netstandard2.0</TargetFramework>
 	  <Nullable>enable</Nullable>
 	  <LangVersion>latest</LangVersion>
+	  <ApplicationIcon>icon.ico</ApplicationIcon>
+	  <Authors>Panoramic Data Limited</Authors>
+	  <PackageProjectUrl>https://github.com/panoramicdata/MicrosoftDynamics.Api/</PackageProjectUrl>
+	  <Copyright>Copyright © Panoramic Data Limited 2021</Copyright>
+	  <PackageLicenseUrl></PackageLicenseUrl>
+	  <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+	  <PackageIcon>Icon.png</PackageIcon>
+	  <PackageTags>MicrosoftDynamics Microsoft Dynamics API REST</PackageTags>
+	  <Title>MicrosoftDynamics.Api</Title>
+	  <Description>A .NET API for Microsoft Dynamics, based on Simple OData Client</Description>
+	  <Summary>A .NET API for Microsoft Dynamics</Summary>
+	  <Company>Panoramic Data Limited</Company>
+	  <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	  <LangVersion>latest</LangVersion>
+	  <RepositoryType>git</RepositoryType>
+	  <RepositoryUrl>https://github.com/panoramicdata/MicrosoftDynamics.Api/</RepositoryUrl>
+	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+	  <PackageReleaseNotes>Initial release</PackageReleaseNotes>
+
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,5 +31,8 @@
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="Simple.OData.Client" Version="5.18.2" />
   </ItemGroup>
+	<ItemGroup>
+		<None Remove="Icon.png" />
+	</ItemGroup>
 
 </Project>

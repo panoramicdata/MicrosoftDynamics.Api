@@ -11,6 +11,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.gitignore = .gitignore
 		LICENSE = LICENSE
 		README.md = README.md
+		version.json = version.json
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MicrosoftDynamics.Api.Test", "MicrosoftDynamics.Api.Test\MicrosoftDynamics.Api.Test.csproj", "{F5D6D94E-495E-440B-94E8-A7625481462B}"
