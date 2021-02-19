@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using Simple.OData.Client;
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -13,11 +14,11 @@ namespace MicrosoftDynamics.Api
 	public class MicrosoftDynamicsClient : ODataClient
 	{
 		private static Uri? _uri;
-		private string? _accessToken;
+		private readonly MicrosoftDynamicsClientOptions _options;
 
 		public MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : base(GetSettings(options))
 		{
-			_accessToken = options.AccessToken;
+			_options = options;
 		}
 
 		/// <summary>
@@ -40,7 +41,7 @@ namespace MicrosoftDynamics.Api
 					Encoding.UTF8,
 					"application/json")
 			};
-			request.Headers.Add("Authorization", "Bearer " + _accessToken);
+			request.Headers.Add("Authorization", "Bearer " + _options.AccessToken);
 			var httpResponseMessage = await httpClient
 				.SendAsync(request, cancellationToken)
 				.ConfigureAwait(false);
@@ -48,6 +49,12 @@ namespace MicrosoftDynamics.Api
 				.Content
 				.ReadAsStringAsync()
 				.ConfigureAwait(false);
+
+			if (!httpResponseMessage.IsSuccessStatusCode)
+			{
+				throw new InvalidOperationException($"{httpResponseMessage.StatusCode}: '{responseBody}' + {string.Join("; ", httpResponseMessage.Headers.Select(h => $"{h.Key}={h.Value}"))}");
+			}
+
 			return JsonConvert.DeserializeObject<JObject>(responseBody);
 		}
 
