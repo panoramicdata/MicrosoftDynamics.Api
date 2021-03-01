@@ -22,7 +22,7 @@
 	  <RepositoryUrl>https://github.com/panoramicdata/MicrosoftDynamics.Api/</RepositoryUrl>
 	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
 
-	  <PackageReleaseNotes>Microsoft.Extensions.Logging.Abstractions downgraded for compatibility</PackageReleaseNotes>
+	  <PackageReleaseNotes>Added PatchAsync</PackageReleaseNotes>
 
   </PropertyGroup>
 

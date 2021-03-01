@@ -61,6 +61,47 @@ namespace MicrosoftDynamics.Api
 			return new Guid(guidString);
 		}
 
+		/// <summary>
+		/// This permits updates using @odata.bind.   You will have to add a parameter for the namespace, like:
+		/// - "@odata.type": "#Microsoft.Dynamics.CRM.incident"
+		/// </summary>
+		/// <param name="path"></param>
+		/// <param name="entity"></param>
+		/// <param name="cancellationToken"></param>
+		/// <returns>The resulting body, interpreted as a JObject</returns>
+		public async Task<Guid> PatchAsync(string path, object entity, CancellationToken cancellationToken)
+		{
+			using var httpClient = new HttpClient
+			{
+				BaseAddress = _uri!
+			};
+			var request = new HttpRequestMessage(new HttpMethod("PATCH"), path)
+			{
+				Content = new StringContent(JsonConvert.SerializeObject(entity),
+					Encoding.UTF8,
+					"application/json")
+			};
+			request.Headers.Add("Authorization", "Bearer " + _options.AccessToken);
+			var httpResponseMessage = await httpClient
+				.SendAsync(request, cancellationToken)
+				.ConfigureAwait(false);
+			var responseBody = await httpResponseMessage
+				.Content
+				.ReadAsStringAsync()
+				.ConfigureAwait(false);
+
+			if (!httpResponseMessage.IsSuccessStatusCode)
+			{
+				throw new InvalidOperationException($"{httpResponseMessage.StatusCode}: '{responseBody}' + {string.Join("; ", httpResponseMessage.Headers.Select(h => $"{h.Key}={h.Value}"))}");
+			}
+
+			var createdEntityHeader = httpResponseMessage.Headers.GetValues("OData-EntityId").Single();
+
+			var guidString = createdEntityHeader.Split('(').Last().TrimEnd(')');
+
+			return new Guid(guidString);
+		}
+
 		private static ODataClientSettings GetSettings(MicrosoftDynamicsClientOptions options)
 		{
 			// Validate the options
