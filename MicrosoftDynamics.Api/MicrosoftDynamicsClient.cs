@@ -68,8 +68,7 @@ namespace MicrosoftDynamics.Api
 		/// <param name="path"></param>
 		/// <param name="entity"></param>
 		/// <param name="cancellationToken"></param>
-		/// <returns>The resulting body, interpreted as a JObject</returns>
-		public async Task<Guid> PatchAsync(string path, object entity, CancellationToken cancellationToken)
+		public async Task PatchAsync(string path, object entity, CancellationToken cancellationToken)
 		{
 			using var httpClient = new HttpClient
 			{
@@ -94,12 +93,6 @@ namespace MicrosoftDynamics.Api
 			{
 				throw new InvalidOperationException($"{httpResponseMessage.StatusCode}: '{responseBody}' + {string.Join("; ", httpResponseMessage.Headers.Select(h => $"{h.Key}={h.Value}"))}");
 			}
-
-			var createdEntityHeader = httpResponseMessage.Headers.GetValues("OData-EntityId").Single();
-
-			var guidString = createdEntityHeader.Split('(').Last().TrimEnd(')');
-
-			return new Guid(guidString);
 		}
 
 		private static ODataClientSettings GetSettings(MicrosoftDynamicsClientOptions options)
