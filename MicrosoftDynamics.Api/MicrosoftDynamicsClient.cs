@@ -28,36 +28,14 @@ namespace MicrosoftDynamics.Api
 		/// <param name="entity"></param>
 		/// <param name="cancellationToken"></param>
 		/// <returns>The resulting body, interpreted as a JObject</returns>
-		public async Task<Guid> PostAsync(string path, object entity, CancellationToken cancellationToken)
+		public async Task<Guid> PostAsync(
+			string path,
+			object entity,
+			CancellationToken cancellationToken)
 		{
-			using var httpClient = new HttpClient
-			{
-				BaseAddress = _uri!
-			};
-			var request = new HttpRequestMessage(HttpMethod.Post, path)
-			{
-				Content = new StringContent(JsonConvert.SerializeObject(entity),
-					Encoding.UTF8,
-					"application/json")
-			};
-			request.Headers.Add("Authorization", "Bearer " + _options.AccessToken);
-			var httpResponseMessage = await httpClient
-				.SendAsync(request, cancellationToken)
-				.ConfigureAwait(false);
-			var responseBody = await httpResponseMessage
-				.Content
-				.ReadAsStringAsync()
-				.ConfigureAwait(false);
-
-			if (!httpResponseMessage.IsSuccessStatusCode)
-			{
-				throw new InvalidOperationException($"{httpResponseMessage.StatusCode}: '{responseBody}' + {string.Join("; ", httpResponseMessage.Headers.Select(h => $"{h.Key}={h.Value}"))}");
-			}
-
-			var createdEntityHeader = httpResponseMessage.Headers.GetValues("OData-EntityId").Single();
-
+			var responseMessage = await SendAsync(HttpMethod.Post, path, entity, cancellationToken).ConfigureAwait(false);
+			var createdEntityHeader = responseMessage.Headers.GetValues("OData-EntityId").Single();
 			var guidString = createdEntityHeader.Split('(').Last().TrimEnd(')');
-
 			return new Guid(guidString);
 		}
 
@@ -68,31 +46,51 @@ namespace MicrosoftDynamics.Api
 		/// <param name="path"></param>
 		/// <param name="entity"></param>
 		/// <param name="cancellationToken"></param>
-		public async Task PatchAsync(string path, object entity, CancellationToken cancellationToken)
+		public async Task PatchAsync(
+			string path,
+			object entity,
+			CancellationToken cancellationToken)
+			=> _ = await SendAsync(new HttpMethod("PATCH"), path, entity, cancellationToken).ConfigureAwait(false);
+
+		private async Task<HttpResponseMessage> SendAsync(
+			HttpMethod httpMethod,
+			string path,
+			object entity,
+			CancellationToken cancellationToken)
 		{
 			using var httpClient = new HttpClient
 			{
 				BaseAddress = _uri!
 			};
-			var request = new HttpRequestMessage(new HttpMethod("PATCH"), path)
+			var requestBody = JsonConvert.SerializeObject(entity);
+			var request = new HttpRequestMessage(httpMethod, path)
 			{
-				Content = new StringContent(JsonConvert.SerializeObject(entity),
+				Content = new StringContent(requestBody,
 					Encoding.UTF8,
 					"application/json")
 			};
 			request.Headers.Add("Authorization", "Bearer " + _options.AccessToken);
-			var httpResponseMessage = await httpClient
+			var responseMessage = await httpClient
 				.SendAsync(request, cancellationToken)
 				.ConfigureAwait(false);
-			var responseBody = await httpResponseMessage
-				.Content
-				.ReadAsStringAsync()
-				.ConfigureAwait(false);
 
-			if (!httpResponseMessage.IsSuccessStatusCode)
+			if (!responseMessage.IsSuccessStatusCode)
 			{
-				throw new InvalidOperationException($"{httpResponseMessage.StatusCode}: '{responseBody}' + {string.Join("; ", httpResponseMessage.Headers.Select(h => $"{h.Key}={h.Value}"))}");
+				var responseBody = await responseMessage
+					.Content
+					.ReadAsStringAsync()
+					.ConfigureAwait(false);
+
+				throw new InvalidOperationException(
+					$"Path: {_uri!}/{path} {responseMessage.StatusCode}\n" +
+					$"Request Headers: {request.Headers}\n" +
+					$"Request Body: {requestBody}\n" +
+					$"Response Headers: {responseMessage.Headers}\n" +
+					$"Response Body: {responseBody}"
+					);
 			}
+
+			return responseMessage;
 		}
 
 		private static ODataClientSettings GetSettings(MicrosoftDynamicsClientOptions options)
