@@ -22,7 +22,7 @@
 	  <RepositoryUrl>https://github.com/panoramicdata/MicrosoftDynamics.Api/</RepositoryUrl>
 	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
 
-	  <PackageReleaseNotes>Updated nuget packages</PackageReleaseNotes>
+	  <PackageReleaseNotes>Made the Options in the client public rather than private</PackageReleaseNotes>
 
   </PropertyGroup>
 
