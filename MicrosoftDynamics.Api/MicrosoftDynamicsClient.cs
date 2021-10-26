@@ -13,11 +13,11 @@ namespace MicrosoftDynamics.Api
 	public class MicrosoftDynamicsClient : ODataClient
 	{
 		private static Uri? _uri;
-		private readonly MicrosoftDynamicsClientOptions _options;
+		public readonly MicrosoftDynamicsClientOptions Options;
 
 		public MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : base(GetSettings(options))
 		{
-			_options = options;
+			Options = options;
 		}
 
 		/// <summary>
@@ -69,7 +69,7 @@ namespace MicrosoftDynamics.Api
 					Encoding.UTF8,
 					"application/json")
 			};
-			request.Headers.Add("Authorization", "Bearer " + _options.AccessToken);
+			request.Headers.Add("Authorization", "Bearer " + Options.AccessToken);
 			var responseMessage = await httpClient
 				.SendAsync(request, cancellationToken)
 				.ConfigureAwait(false);
