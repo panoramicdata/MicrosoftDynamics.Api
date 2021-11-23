@@ -84,3 +84,4 @@ dotnet_style_qualification_for_property = false:suggestion
 
 # RCS1224: Make method an extension method.
 dotnet_diagnostic.RCS1224.severity = none
+csharp_style_namespace_declarations=file_scoped:silent

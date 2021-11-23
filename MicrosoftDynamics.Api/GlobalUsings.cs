@@ -1,0 +1,13 @@
+﻿global using Microsoft.Extensions.Logging;
+global using Microsoft.Extensions.Logging.Abstractions;
+global using MicrosoftDynamics.Api.Exceptions;
+global using Newtonsoft.Json;
+global using Simple.OData.Client;
+global using System;
+global using System.Linq;
+global using System.Net.Http;
+global using System.Runtime.Serialization;
+global using System.Text;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using System.Web;

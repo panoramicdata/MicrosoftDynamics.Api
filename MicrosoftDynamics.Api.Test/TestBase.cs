@@ -1,20 +1,16 @@
-﻿using Microsoft.Extensions.Logging;
-using Xunit.Abstractions;
+﻿namespace MicrosoftDynamics.Api.Test;
 
-namespace MicrosoftDynamics.Api.Test
+public class TestBase
 {
-	public class TestBase
+	protected TestConfig TestConfig { get; }
+	protected ILogger Logger { get; }
+
+	public TestBase(ITestOutputHelper testOutputHelper)
 	{
-		protected TestConfig TestConfig { get; }
-		protected ILogger Logger { get; }
-
-		public TestBase(ITestOutputHelper testOutputHelper)
-		{
-			Logger = testOutputHelper.BuildLoggerFor<TestBase>();
-			TestConfig = TestConfig.Load();
-			TestConfig.Options.Logger = testOutputHelper.BuildLoggerFor<MicrosoftDynamicsClient>();
-		}
-
-		protected MicrosoftDynamicsClient Client => new(TestConfig.Options);
+		Logger = testOutputHelper.BuildLoggerFor<TestBase>();
+		TestConfig = TestConfig.Load();
+		TestConfig.Options.Logger = testOutputHelper.BuildLoggerFor<MicrosoftDynamicsClient>();
 	}
+
+	protected MicrosoftDynamicsClient Client => new(TestConfig.Options);
 }
