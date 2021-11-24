@@ -10,6 +10,7 @@ public class TestBase
 		Logger = testOutputHelper.BuildLoggerFor<TestBase>();
 		TestConfig = TestConfig.Load();
 		TestConfig.Options.Logger = testOutputHelper.BuildLoggerFor<MicrosoftDynamicsClient>();
+		TestConfig.Options.LogMetadata = false;
 	}
 
 	protected MicrosoftDynamicsClient Client => new(TestConfig.Options);

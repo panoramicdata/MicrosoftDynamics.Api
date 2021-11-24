@@ -41,6 +41,12 @@ public class MicrosoftDynamicsClientOptions
 	public string OdataApiVersion { get; set; } = "9.1";
 
 	/// <summary>
+	/// Whether to log metadata at the trace level
+	/// Disable for unit tests, as this is extremely verbose
+	/// </summary>
+	public bool LogMetadata { get; set; } = true;
+
+	/// <summary>
 	/// Validate the properties
 	/// </summary>
 	/// <exception cref="ConfigurationException">Thrown if the properties are invalid.</exception>
