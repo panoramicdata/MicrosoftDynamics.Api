@@ -22,7 +22,7 @@
 	  <RepositoryUrl>https://github.com/panoramicdata/MicrosoftDynamics.Api/</RepositoryUrl>
 	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
 
-	  <PackageReleaseNotes>Updated nuget packages</PackageReleaseNotes>
+	  <PackageReleaseNotes>Added logging</PackageReleaseNotes>
 
   </PropertyGroup>
 
