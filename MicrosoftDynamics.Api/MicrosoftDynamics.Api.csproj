@@ -22,7 +22,7 @@
 	  <RepositoryUrl>https://github.com/panoramicdata/MicrosoftDynamics.Api/</RepositoryUrl>
 	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
 
-	  <PackageReleaseNotes>Added logging</PackageReleaseNotes>
+	  <PackageReleaseNotes>Logging raw HTTP traffic at the debug level and metadata at the trace level.</PackageReleaseNotes>
 
   </PropertyGroup>
 

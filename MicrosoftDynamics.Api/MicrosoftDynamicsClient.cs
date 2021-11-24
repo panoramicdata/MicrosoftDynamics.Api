@@ -152,7 +152,12 @@ public class MicrosoftDynamicsClient : ODataClient
 		{
 			if (responseMessage.RequestMessage.RequestUri.ToString().Contains("$metadata"))
 			{
-				options.Logger.LogDebug("Metadata fetched");
+				options.Logger.LogTrace(
+					"Received {statusCode}\n{headers}\n{responseBody}",
+					responseMessage.StatusCode,
+					(responseMessage.Headers as HttpHeaders).ToDebugString(),
+					await responseMessage.Content.ToDebugStringAsync()
+					);
 			}
 			else
 			{
