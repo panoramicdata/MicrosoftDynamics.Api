@@ -6,6 +6,7 @@ global using Simple.OData.Client;
 global using System;
 global using System.Linq;
 global using System.Net.Http;
+global using System.Net.Http.Headers;
 global using System.Runtime.Serialization;
 global using System.Text;
 global using System.Threading;

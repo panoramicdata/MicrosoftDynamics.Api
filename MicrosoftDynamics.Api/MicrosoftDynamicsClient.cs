@@ -1,13 +1,17 @@
-﻿namespace MicrosoftDynamics.Api;
+﻿using MicrosoftDynamics.Api.Extensions;
+
+namespace MicrosoftDynamics.Api;
 
 public class MicrosoftDynamicsClient : ODataClient
 {
 	private static Uri? _uri;
 	public readonly MicrosoftDynamicsClientOptions Options;
+	private readonly ILogger _logger;
 
 	public MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : base(GetSettings(options))
 	{
 		Options = options;
+		_logger = options.Logger ?? NullLogger.Instance;
 	}
 
 	/// <summary>
@@ -60,6 +64,11 @@ public class MicrosoftDynamicsClient : ODataClient
 				"application/json")
 		};
 		request.Headers.Add("Authorization", "Bearer " + Options.AccessToken);
+		_logger.LogDebug(
+			"Sending {httpMethod}: {path}: {request}",
+			httpMethod,
+			path,
+			request);
 		var responseMessage = await httpClient
 			.SendAsync(request, cancellationToken)
 			.ConfigureAwait(false);
@@ -70,6 +79,10 @@ public class MicrosoftDynamicsClient : ODataClient
 				.Content
 				.ReadAsStringAsync()
 				.ConfigureAwait(false);
+			_logger.LogDebug(
+				"Received non-success ({statusCode}): {responseBody}",
+				responseMessage.StatusCode,
+				responseBody);
 
 			throw new InvalidOperationException(
 				$"Path: {_uri!}/{path} {responseMessage.StatusCode}\n" +
@@ -80,6 +93,13 @@ public class MicrosoftDynamicsClient : ODataClient
 				);
 		}
 
+		_logger.LogDebug(
+			"Received success ({statusCode}): {responseBody}",
+			responseMessage.StatusCode,
+			await responseMessage
+				.Content
+				.ReadAsStringAsync()
+				.ConfigureAwait(false));
 		return responseMessage;
 	}
 
@@ -119,7 +139,32 @@ public class MicrosoftDynamicsClient : ODataClient
 				options.AccessToken = GetBearerToken(responseText);
 			}
 			request.Headers.Add("Authorization", "Bearer " + options.AccessToken);
+			options.Logger.LogDebug(
+				"Sending {requestMethod} {requestUri}\n{headers}\n{content}",
+				request.Method,
+				request.RequestUri,
+				(request.Headers as HttpHeaders).ToDebugString(),
+				await request.Content.ToDebugStringAsync()
+				);
 		};
+
+		settings.AfterResponseAsync += async (HttpResponseMessage responseMessage) =>
+		{
+			if (responseMessage.RequestMessage.RequestUri.ToString().Contains("$metadata"))
+			{
+				options.Logger.LogDebug("Metadata fetched");
+			}
+			else
+			{
+				options.Logger.LogDebug(
+					"Received {statusCode}\n{headers}\n{responseBody}",
+					responseMessage.StatusCode,
+					(responseMessage.Headers as HttpHeaders).ToDebugString(),
+					await responseMessage.Content.ToDebugStringAsync()
+					);
+			}
+		};
+
 		return settings;
 	}
 
