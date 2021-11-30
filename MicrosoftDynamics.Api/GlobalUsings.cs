@@ -2,7 +2,7 @@
 global using Microsoft.Extensions.Logging.Abstractions;
 global using MicrosoftDynamics.Api.Exceptions;
 global using Newtonsoft.Json;
-global using Simple.OData.Client;
+global using PanoramicData.OData.Client;
 global using System;
 global using System.Linq;
 global using System.Net.Http;
