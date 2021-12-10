@@ -138,6 +138,7 @@ public class MicrosoftDynamicsClient : ODataClient
 					.ConfigureAwait(false);
 				options.AccessToken = GetBearerToken(responseText);
 			}
+
 			request.Headers.Add("Authorization", "Bearer " + options.AccessToken);
 			options.Logger.LogDebug(
 				"Sending {requestMethod} {requestUri}\n{headers}\n{content}",
