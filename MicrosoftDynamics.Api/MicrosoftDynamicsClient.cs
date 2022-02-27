@@ -5,10 +5,10 @@ namespace MicrosoftDynamics.Api;
 public class MicrosoftDynamicsClient : ODataClient
 {
 	private static Uri? _uri;
-	public readonly MicrosoftDynamicsClientOptions Options;
+	public MicrosoftDynamicsClientOptions Options { get; }
 	private readonly ILogger _logger;
 
-	public MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : base(GetSettings(options))
+	public MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : base(GetSettings(options ?? throw new ArgumentNullException(nameof(options))))
 	{
 		Options = options;
 		_logger = options.Logger ?? NullLogger.Instance;
@@ -65,7 +65,7 @@ public class MicrosoftDynamicsClient : ODataClient
 		};
 		request.Headers.Add("Authorization", "Bearer " + Options.AccessToken);
 		_logger.LogDebug(
-			"Sending {httpMethod}: {path}: {request}",
+			"Sending {HttpMethod}: {Path}: {Request}",
 			httpMethod,
 			path,
 			request);
@@ -80,7 +80,7 @@ public class MicrosoftDynamicsClient : ODataClient
 				.ReadAsStringAsync()
 				.ConfigureAwait(false);
 			_logger.LogDebug(
-				"Received non-success ({statusCode}): {responseBody}",
+				"Received non-success ({StatusCode}): {ResponseBody}",
 				responseMessage.StatusCode,
 				responseBody);
 
@@ -94,7 +94,7 @@ public class MicrosoftDynamicsClient : ODataClient
 		}
 
 		_logger.LogDebug(
-			"Received success ({statusCode}): {responseBody}",
+			"Received success ({StatusCode}): {ResponseBody}",
 			responseMessage.StatusCode,
 			await responseMessage
 				.Content
@@ -141,11 +141,11 @@ public class MicrosoftDynamicsClient : ODataClient
 
 			request.Headers.Add("Authorization", "Bearer " + options.AccessToken);
 			options.Logger.LogDebug(
-				"Sending {requestMethod} {requestUri}\n{headers}\n{content}",
+				"Sending {RequestMethod} {RequestUri}\n{Headers}\n{Content}",
 				request.Method,
 				request.RequestUri,
-				(request.Headers as HttpHeaders).ToDebugString(),
-				await request.Content.ToDebugStringAsync()
+				request.Headers.ToDebugString(),
+				await request.Content.ToDebugStringAsync().ConfigureAwait(false)
 				);
 		};
 
@@ -156,10 +156,10 @@ public class MicrosoftDynamicsClient : ODataClient
 				if (options.LogMetadata)
 				{
 					options.Logger.LogTrace(
-					  "Received {statusCode}\n{headers}\n{responseBody}",
+					  "Received {StatusCode}\n{Headers}\n{ResponseBody}",
 					  responseMessage.StatusCode,
-					  (responseMessage.Headers as HttpHeaders).ToDebugString(),
-					  await responseMessage.Content.ToDebugStringAsync()
+					  responseMessage.Headers.ToDebugString(),
+					  await responseMessage.Content.ToDebugStringAsync().ConfigureAwait(false)
 					  );
 				}
 				else
@@ -170,10 +170,10 @@ public class MicrosoftDynamicsClient : ODataClient
 			else
 			{
 				options.Logger.LogDebug(
-					"Received {statusCode}\n{headers}\n{responseBody}",
+					"Received {StatusCode}\n{Headers}\n{ResponseBody}",
 					responseMessage.StatusCode,
-					(responseMessage.Headers as HttpHeaders).ToDebugString(),
-					await responseMessage.Content.ToDebugStringAsync()
+					responseMessage.Headers.ToDebugString(),
+					await responseMessage.Content.ToDebugStringAsync().ConfigureAwait(false)
 					);
 			}
 		};
