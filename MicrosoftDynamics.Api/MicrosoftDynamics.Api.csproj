@@ -24,7 +24,11 @@
 		<RepositoryUrl>https://github.com/panoramicdata/MicrosoftDynamics.Api/</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 
-		<PackageReleaseNotes>Returned to Simple.OData.Client.</PackageReleaseNotes>
+		<PackageReleaseNotes>
+			Upversion to 2.0 for breaking change in MicrosoftDynamicsClientOptions.
+			Added token expiry handling.
+			Code tidy.
+		</PackageReleaseNotes>
 
 	</PropertyGroup>
 

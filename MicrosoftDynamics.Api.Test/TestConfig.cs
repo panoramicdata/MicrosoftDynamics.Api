@@ -7,8 +7,8 @@ public class TestConfig
 	internal static TestConfig Load()
 	{
 		var builder = new ConfigurationBuilder()
-			  .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "../../.."))
-			  .AddJsonFile("appsettings.json");
+			.SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "../../.."))
+			.AddJsonFile("appsettings.json");
 		var configurationRoot = builder.Build();
 		var config = new TestConfig();
 		configurationRoot.Bind(config);
@@ -16,6 +16,7 @@ public class TestConfig
 		{
 			config.Options.AccessToken = null;
 		}
+
 		return config;
 	}
 }

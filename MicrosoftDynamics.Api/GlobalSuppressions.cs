@@ -5,6 +5,7 @@
 
 using System.Diagnostics.CodeAnalysis;
 
+[assembly: CLSCompliant(false)]
 [assembly: SuppressMessage(
 	"Performance",
 	"CA1848:Use the LoggerMessage delegates",

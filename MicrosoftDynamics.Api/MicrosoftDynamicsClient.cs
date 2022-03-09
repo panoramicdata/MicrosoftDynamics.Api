@@ -5,6 +5,8 @@ namespace MicrosoftDynamics.Api;
 public class MicrosoftDynamicsClient : ODataClient
 {
 	private static Uri? _uri;
+	private static DateTime? _accessTokenExpiryDateTimeUtc;
+
 	public MicrosoftDynamicsClientOptions Options { get; }
 	private readonly ILogger _logger;
 
@@ -109,19 +111,22 @@ public class MicrosoftDynamicsClient : ODataClient
 		options.Validate();
 		// The options are valid.
 
-		_uri = new Uri(options.Url + $"api/data/v{options.OdataApiVersion}/");
+		_uri = new Uri(options.Uri, $"api/data/v{options.OdataApiVersion}/");
 		var settings = new ODataClientSettings(_uri);
 
 		settings.BeforeRequestAsync += async (HttpRequestMessage request) =>
 		{
-			if (options.AccessToken is null)
+			if (
+				options.AccessToken is null
+				|| (_accessTokenExpiryDateTimeUtc is not null && _accessTokenExpiryDateTimeUtc < DateTime.UtcNow)
+			)
 			{
 				using var authHttpClient = new HttpClient
 				{
-					BaseAddress = new(options.AuthenticationUrl)
+					BaseAddress = options.AuthenticationUri
 				};
 				authHttpClient.DefaultRequestHeaders.Authorization = new("Basic", Base64Encode($"{options.ClientId}:{options.ClientSecret}"));
-				var scope = HttpUtility.UrlEncode($"{options.Url!.TrimEnd('/')}/.default");
+				var scope = HttpUtility.UrlEncode($"{options.Uri!.ToString().TrimEnd('/')}/.default");
 				var authRequest = new HttpRequestMessage(HttpMethod.Post, "")
 				{
 					Content = new StringContent(
@@ -136,17 +141,22 @@ public class MicrosoftDynamicsClient : ODataClient
 					.Content
 					.ReadAsStringAsync()
 					.ConfigureAwait(false);
-				options.AccessToken = GetBearerToken(responseText);
+				var bearerTokenResponse = JsonConvert.DeserializeObject<BearerTokenResponse>(responseText);
+				options.AccessToken = bearerTokenResponse!.AccessToken;
+				_accessTokenExpiryDateTimeUtc = DateTime.UtcNow + TimeSpan.FromSeconds(Math.Max(0, bearerTokenResponse.ExpiresIn - 10));
 			}
 
 			request.Headers.Add("Authorization", "Bearer " + options.AccessToken);
-			options.Logger.LogDebug(
+			if (options.Logger.IsEnabled(LogLevel.Debug))
+			{
+				options.Logger.LogDebug(
 				"Sending {RequestMethod} {RequestUri}\n{Headers}\n{Content}",
 				request.Method,
 				request.RequestUri,
 				request.Headers.ToDebugString(),
 				await request.Content.ToDebugStringAsync().ConfigureAwait(false)
 				);
+			}
 		};
 
 		settings.AfterResponseAsync += async (HttpResponseMessage responseMessage) =>
@@ -155,12 +165,15 @@ public class MicrosoftDynamicsClient : ODataClient
 			{
 				if (options.LogMetadata)
 				{
-					options.Logger.LogTrace(
+					if (options.Logger.IsEnabled(LogLevel.Trace))
+					{
+						options.Logger.LogTrace(
 					  "Received {StatusCode}\n{Headers}\n{ResponseBody}",
 					  responseMessage.StatusCode,
 					  responseMessage.Headers.ToDebugString(),
 					  await responseMessage.Content.ToDebugStringAsync().ConfigureAwait(false)
 					  );
+					}
 				}
 				else
 				{
@@ -169,22 +182,19 @@ public class MicrosoftDynamicsClient : ODataClient
 			}
 			else
 			{
-				options.Logger.LogDebug(
-					"Received {StatusCode}\n{Headers}\n{ResponseBody}",
-					responseMessage.StatusCode,
-					responseMessage.Headers.ToDebugString(),
-					await responseMessage.Content.ToDebugStringAsync().ConfigureAwait(false)
-					);
+				if (options.Logger.IsEnabled(LogLevel.Debug))
+				{
+					options.Logger.LogDebug(
+						"Received {StatusCode}\n{Headers}\n{ResponseBody}",
+						responseMessage.StatusCode,
+						responseMessage.Headers.ToDebugString(),
+						await responseMessage.Content.ToDebugStringAsync().ConfigureAwait(false)
+						);
+				}
 			}
 		};
 
 		return settings;
-	}
-
-	private static string GetBearerToken(string responseText)
-	{
-		var bearerTokenResponse = JsonConvert.DeserializeObject<BearerTokenResponse>(responseText);
-		return bearerTokenResponse!.AccessToken;
 	}
 
 	public static string Base64Encode(string plainText)

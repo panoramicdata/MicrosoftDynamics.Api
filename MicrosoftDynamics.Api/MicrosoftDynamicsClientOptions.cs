@@ -8,7 +8,7 @@ public class MicrosoftDynamicsClientOptions
 	/// <summary>
 	/// The authentication URL
 	/// </summary>
-	public string? AuthenticationUrl { get; set; }
+	public Uri? AuthenticationUri { get; set; }
 
 	/// <summary>
 	/// The authentication Client ID
@@ -23,7 +23,7 @@ public class MicrosoftDynamicsClientOptions
 	/// <summary>
 	/// The dynamics URL
 	/// </summary>
-	public string? Url { get; set; }
+	public Uri? Uri { get; set; }
 
 	/// <summary>
 	/// An optional access token.  Required if Authentication, ClientId or ClientSecret are not provided
@@ -56,17 +56,17 @@ public class MicrosoftDynamicsClientOptions
 		if (AccessToken is not null)
 		{
 			// Yes.  Make sure other credentials are not set.
-			if (AuthenticationUrl is not null || ClientId is not null || ClientSecret is not null)
+			if (AuthenticationUri is not null || ClientId is not null || ClientSecret is not null)
 			{
-				throw new ConfigurationException($"AccessToken is provided, so {nameof(AuthenticationUrl)}, {nameof(ClientId)} and {nameof(ClientSecret)} should not be.");
+				throw new ConfigurationException($"AccessToken is provided, so {nameof(AuthenticationUri)}, {nameof(ClientId)} and {nameof(ClientSecret)} should not be.");
 			}
 		}
 		else
 		{
 			// No.  Make sure other credentials are set.
-			if (AuthenticationUrl is null || ClientId is null || ClientSecret is null)
+			if (AuthenticationUri is null || ClientId is null || ClientSecret is null)
 			{
-				throw new ConfigurationException($"AccessToken is not provided, so {nameof(AuthenticationUrl)}, {nameof(ClientId)} and {nameof(ClientSecret)} all must be.");
+				throw new ConfigurationException($"AccessToken is not provided, so {nameof(AuthenticationUri)}, {nameof(ClientId)} and {nameof(ClientSecret)} all must be.");
 			}
 		}
 	}

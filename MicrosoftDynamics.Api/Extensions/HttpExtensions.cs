@@ -10,7 +10,7 @@ internal static class HttpExtensions
 		string contentString;
 		return
 			content is null ? "No content" :
-			(contentString = await content.ReadAsStringAsync()).StartsWith("{") ? FormatJson(contentString)
+			(contentString = await content.ReadAsStringAsync().ConfigureAwait(false)).StartsWith("{", StringComparison.Ordinal) ? FormatJson(contentString)
 			: contentString;
 	}
 
