@@ -25,8 +25,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 
 		<PackageReleaseNotes>
-			Upversion to 2.0 for breaking change in MicrosoftDynamicsClientOptions.
-			Added token expiry handling.
+			Improved token expiry handling.
 			Code tidy.
 		</PackageReleaseNotes>
 

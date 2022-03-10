@@ -8,12 +8,11 @@ public class MicrosoftDynamicsClient : ODataClient
 	private static DateTime? _accessTokenExpiryDateTimeUtc;
 
 	public MicrosoftDynamicsClientOptions Options { get; }
-	private readonly ILogger _logger;
 
-	public MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : base(GetSettings(options ?? throw new ArgumentNullException(nameof(options))))
+	public MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options)
+		: base(GetSettings(options ?? throw new ArgumentNullException(nameof(options))))
 	{
 		Options = options;
-		_logger = options.Logger ?? NullLogger.Instance;
 	}
 
 	/// <summary>
@@ -30,8 +29,14 @@ public class MicrosoftDynamicsClient : ODataClient
 		CancellationToken cancellationToken)
 	{
 		var responseMessage = await SendAsync(HttpMethod.Post, path, entity, cancellationToken).ConfigureAwait(false);
-		var createdEntityHeader = responseMessage.Headers.GetValues("OData-EntityId").Single();
-		var guidString = createdEntityHeader.Split('(').Last().TrimEnd(')');
+		var createdEntityHeader = responseMessage
+			.Headers
+			.GetValues("OData-EntityId")
+			.Single();
+		var guidString = createdEntityHeader
+			.Split('(')
+			.Last()
+			.TrimEnd(')');
 		return new Guid(guidString);
 	}
 
@@ -59,20 +64,18 @@ public class MicrosoftDynamicsClient : ODataClient
 			BaseAddress = _uri!
 		};
 		var requestBody = JsonConvert.SerializeObject(entity);
-		var request = new HttpRequestMessage(httpMethod, path)
+		using var request = new HttpRequestMessage(httpMethod, path)
 		{
 			Content = new StringContent(requestBody,
 				Encoding.UTF8,
 				"application/json")
 		};
-		request.Headers.Add("Authorization", "Bearer " + Options.AccessToken);
-		_logger.LogDebug(
-			"Sending {HttpMethod}: {Path}: {Request}",
-			httpMethod,
-			path,
-			request);
+		await UpdateRequestHeadersAndLog(Options, request)
+			.ConfigureAwait(false);
 		var responseMessage = await httpClient
 			.SendAsync(request, cancellationToken)
+			.ConfigureAwait(false);
+		await LogResponseAsync(Options, responseMessage)
 			.ConfigureAwait(false);
 
 		if (!responseMessage.IsSuccessStatusCode)
@@ -81,10 +84,6 @@ public class MicrosoftDynamicsClient : ODataClient
 				.Content
 				.ReadAsStringAsync()
 				.ConfigureAwait(false);
-			_logger.LogDebug(
-				"Received non-success ({StatusCode}): {ResponseBody}",
-				responseMessage.StatusCode,
-				responseBody);
 
 			throw new InvalidOperationException(
 				$"Path: {_uri!}/{path} {responseMessage.StatusCode}\n" +
@@ -95,13 +94,6 @@ public class MicrosoftDynamicsClient : ODataClient
 				);
 		}
 
-		_logger.LogDebug(
-			"Received success ({StatusCode}): {ResponseBody}",
-			responseMessage.StatusCode,
-			await responseMessage
-				.Content
-				.ReadAsStringAsync()
-				.ConfigureAwait(false));
 		return responseMessage;
 	}
 
@@ -116,88 +108,107 @@ public class MicrosoftDynamicsClient : ODataClient
 
 		settings.BeforeRequestAsync += async (HttpRequestMessage request) =>
 		{
-			if (
-				options.AccessToken is null
-				|| (_accessTokenExpiryDateTimeUtc is not null && _accessTokenExpiryDateTimeUtc < DateTime.UtcNow)
-			)
-			{
-				using var authHttpClient = new HttpClient
-				{
-					BaseAddress = options.AuthenticationUri
-				};
-				authHttpClient.DefaultRequestHeaders.Authorization = new("Basic", Base64Encode($"{options.ClientId}:{options.ClientSecret}"));
-				var scope = HttpUtility.UrlEncode($"{options.Uri!.ToString().TrimEnd('/')}/.default");
-				var authRequest = new HttpRequestMessage(HttpMethod.Post, "")
-				{
-					Content = new StringContent(
-						$"grant_type=client_credentials&scope={scope}",
-						Encoding.UTF8,
-						"application/x-www-form-urlencoded")
-				};
-				var response = await authHttpClient
-					.SendAsync(authRequest)
-					.ConfigureAwait(false);
-				var responseText = await response
-					.Content
-					.ReadAsStringAsync()
-					.ConfigureAwait(false);
-				var bearerTokenResponse = JsonConvert.DeserializeObject<BearerTokenResponse>(responseText);
-				options.AccessToken = bearerTokenResponse!.AccessToken;
-				_accessTokenExpiryDateTimeUtc = DateTime.UtcNow + TimeSpan.FromSeconds(Math.Max(0, bearerTokenResponse.ExpiresIn - 10));
-			}
-
-			request.Headers.Add("Authorization", "Bearer " + options.AccessToken);
-			if (options.Logger.IsEnabled(LogLevel.Debug))
-			{
-				options.Logger.LogDebug(
-				"Sending {RequestMethod} {RequestUri}\n{Headers}\n{Content}",
-				request.Method,
-				request.RequestUri,
-				request.Headers.ToDebugString(),
-				await request.Content.ToDebugStringAsync().ConfigureAwait(false)
-				);
-			}
+			await UpdateRequestHeadersAndLog(options, request).ConfigureAwait(false);
 		};
 
 		settings.AfterResponseAsync += async (HttpResponseMessage responseMessage) =>
 		{
-			if (responseMessage.RequestMessage.RequestUri.ToString().Contains("$metadata"))
-			{
-				if (options.LogMetadata)
-				{
-					if (options.Logger.IsEnabled(LogLevel.Trace))
-					{
-						options.Logger.LogTrace(
-					  "Received {StatusCode}\n{Headers}\n{ResponseBody}",
-					  responseMessage.StatusCode,
-					  responseMessage.Headers.ToDebugString(),
-					  await responseMessage.Content.ToDebugStringAsync().ConfigureAwait(false)
-					  );
-					}
-				}
-				else
-				{
-					options.Logger.LogTrace("Metadata received");
-				}
-			}
-			else
-			{
-				if (options.Logger.IsEnabled(LogLevel.Debug))
-				{
-					options.Logger.LogDebug(
-						"Received {StatusCode}\n{Headers}\n{ResponseBody}",
-						responseMessage.StatusCode,
-						responseMessage.Headers.ToDebugString(),
-						await responseMessage.Content.ToDebugStringAsync().ConfigureAwait(false)
-						);
-				}
-			}
+			await LogResponseAsync(options, responseMessage).ConfigureAwait(false);
 		};
 
 		return settings;
 	}
 
-	public static string Base64Encode(string plainText)
+	private static async Task LogResponseAsync(MicrosoftDynamicsClientOptions options, HttpResponseMessage responseMessage)
+	{
+		if (responseMessage.RequestMessage.RequestUri.ToString().Contains("$metadata"))
+		{
+			if (options.LogMetadata)
+			{
+				if (options.Logger.IsEnabled(LogLevel.Trace))
+				{
+					options.Logger.LogTrace(
+				  "Received {StatusCode}\n{Headers}\n{ResponseBody}",
+				  responseMessage.StatusCode,
+				  responseMessage.Headers.ToDebugString(),
+				  await responseMessage.Content.ToDebugStringAsync().ConfigureAwait(false)
+				  );
+				}
+			}
+			else
+			{
+				options.Logger.LogTrace("Metadata received");
+			}
+		}
+		else
+		{
+			if (options.Logger.IsEnabled(LogLevel.Debug))
+			{
+				options.Logger.LogDebug(
+					"Received {StatusCode}\n{Headers}\n{ResponseBody}",
+					responseMessage.StatusCode,
+					responseMessage.Headers.ToDebugString(),
+					await responseMessage
+						.Content
+						.ToDebugStringAsync()
+						.ConfigureAwait(false)
+					);
+			}
+		}
+	}
+
+	private static async Task UpdateRequestHeadersAndLog(MicrosoftDynamicsClientOptions options, HttpRequestMessage request)
+	{
+		if (
+			options.AccessToken is null
+			|| (_accessTokenExpiryDateTimeUtc is not null && _accessTokenExpiryDateTimeUtc < DateTime.UtcNow)
+		)
+		{
+			await EnsureAccessTokenUpdatedAsync(options)
+				.ConfigureAwait(false);
+		}
+
+		request.Headers.Add("Authorization", "Bearer " + options.AccessToken);
+		if (options.Logger.IsEnabled(LogLevel.Debug))
+		{
+			options.Logger.LogDebug(
+			"Sending {RequestMethod} {RequestUri}\n{Headers}\n{Content}",
+			request.Method,
+			request.RequestUri,
+			request.Headers.ToDebugString(),
+			await request.Content.ToDebugStringAsync().ConfigureAwait(false)
+			);
+		}
+	}
+
+	private static async Task EnsureAccessTokenUpdatedAsync(MicrosoftDynamicsClientOptions options)
+	{
+		using var authHttpClient = new HttpClient
+		{
+			BaseAddress = options.AuthenticationUri
+		};
+		authHttpClient.DefaultRequestHeaders.Authorization = new("Basic", Base64Encode($"{options.ClientId}:{options.ClientSecret}"));
+		var scope = HttpUtility.UrlEncode($"{options.Uri!.ToString().TrimEnd('/')}/.default");
+		using var authRequest = new HttpRequestMessage(HttpMethod.Post, "")
+		{
+			Content = new StringContent(
+				$"grant_type=client_credentials&scope={scope}",
+				Encoding.UTF8,
+				"application/x-www-form-urlencoded")
+		};
+		var response = await authHttpClient
+			.SendAsync(authRequest)
+			.ConfigureAwait(false);
+		var responseText = await response
+			.Content
+			.ReadAsStringAsync()
+			.ConfigureAwait(false);
+		var bearerTokenResponse = JsonConvert.DeserializeObject<BearerTokenResponse>(responseText);
+		options.AccessToken = bearerTokenResponse!.AccessToken;
+		_accessTokenExpiryDateTimeUtc = DateTime.UtcNow + TimeSpan.FromSeconds(Math.Max(0, bearerTokenResponse.ExpiresIn - 10));
+	}
+
+	private static string Base64Encode(string plainText)
 	{
 		var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
 		return Convert.ToBase64String(plainTextBytes);
