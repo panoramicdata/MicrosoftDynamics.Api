@@ -12,4 +12,12 @@ using System.Diagnostics.CodeAnalysis;
 	"CA1707:Identifiers should not contain underscores",
 	Justification = "Appropriate for unit tests",
 	Scope = "namespaceanddescendants",
-	Target = "~N:MicrosoftDynamics.Api.Test")]
+	Target = "~N:MicrosoftDynamics.Api.Test")
+]
+[assembly: SuppressMessage(
+	"Performance",
+	"CA1848:Use the LoggerMessage delegates",
+	Justification = "Implementation effort not worth the performance gain",
+	Scope = "namespaceanddescendants",
+	Target = "~N:MicrosoftDynamics.Api.Test")
+]

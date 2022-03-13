@@ -2,6 +2,8 @@
 
 public class TestBase
 {
+	private MicrosoftDynamicsClient? _client;
+
 	protected TestConfig TestConfig { get; }
 	protected ILogger Logger { get; }
 
@@ -13,5 +15,6 @@ public class TestBase
 		TestConfig.Options.LogMetadata = false;
 	}
 
-	protected MicrosoftDynamicsClient Client => new(TestConfig.Options);
+	protected MicrosoftDynamicsClient Client
+		=> _client ??= new(TestConfig.Options);
 }
