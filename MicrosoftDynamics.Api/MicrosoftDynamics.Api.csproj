@@ -32,14 +32,14 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-		<PackageReference Include="Simple.OData.Client" Version="5.26.0" />
+		<PackageReference Include="Simple.OData.Client" Version="6.0.1" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Include="Icon.png" Pack="true" PackagePath="" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Update="Nerdbank.GitVersioning" Version="3.4.255" />
+		<PackageReference Update="Nerdbank.GitVersioning" Version="3.5.119" />
 	</ItemGroup>
 </Project>
