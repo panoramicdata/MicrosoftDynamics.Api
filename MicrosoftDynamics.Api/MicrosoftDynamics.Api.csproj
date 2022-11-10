@@ -25,10 +25,10 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 
 		<PackageReleaseNotes>
-			Improved token expiry handling.
-			Code tidy.
+			Updated nuget packages. Added symbols package.
 		</PackageReleaseNotes>
-
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
 
 	<ItemGroup>
