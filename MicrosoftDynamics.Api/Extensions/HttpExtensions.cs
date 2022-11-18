@@ -7,10 +7,17 @@ internal static class HttpExtensions
 
 	internal static async Task<string> ToDebugStringAsync(this HttpContent content)
 	{
-		string contentString;
-		return
-			content is null ? "No content" :
-			(contentString = await content.ReadAsStringAsync().ConfigureAwait(false)).StartsWith("{", StringComparison.Ordinal) ? FormatJson(contentString)
+		if (content is null)
+		{
+			return "No content";
+		}
+
+		var contentString = await content
+			.ReadAsStringAsync()
+			.ConfigureAwait(false);
+
+		return contentString.StartsWith("{", StringComparison.Ordinal)
+			? FormatJson(contentString)
 			: contentString;
 	}
 
