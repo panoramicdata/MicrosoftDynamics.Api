@@ -23,9 +23,8 @@
 		<RepositoryType>git</RepositoryType>
 		<RepositoryUrl>https://github.com/panoramicdata/MicrosoftDynamics.Api/</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-
 		<PackageReleaseNotes>
-			Added GetAccessToken method to provide a token that can be used outside the client in normal HTTP requests.
+			Added ClearODataClientMetaDataCache function to call ClearMetaDataCache() on the OData Client
 		</PackageReleaseNotes>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
