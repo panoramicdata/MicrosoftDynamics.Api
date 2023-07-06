@@ -9,7 +9,7 @@ public class MicrosoftDynamicsClient : ODataClient
 
 	public MicrosoftDynamicsClientOptions Options { get; }
 
-	public static void ClearODataClientMetaDataCache() => ClearMetadataCache();
+	public void ClearODataClientMetaDataCache() => ClearMetadataCache();
 
 	/// <summary>
 	/// Ensure the client has an access token, which can then be used in normal HttpClient requests i.e. not using the client
