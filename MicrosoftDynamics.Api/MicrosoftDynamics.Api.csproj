@@ -23,9 +23,8 @@
 		<RepositoryType>git</RepositoryType>
 		<RepositoryUrl>https://github.com/panoramicdata/MicrosoftDynamics.Api/</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-
 		<PackageReleaseNotes>
-			Updated nuget packages. Added symbols package.
+			Added ClearODataClientMetaDataCache function to call ClearMetaDataCache() on the OData Client
 		</PackageReleaseNotes>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>

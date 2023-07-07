@@ -9,6 +9,25 @@ public class MicrosoftDynamicsClient : ODataClient
 
 	public MicrosoftDynamicsClientOptions Options { get; }
 
+	public void ClearODataClientMetaDataCache() => ClearMetadataCache();
+
+	/// <summary>
+	/// Ensure the client has an access token, which can then be used in normal HttpClient requests i.e. not using the client
+	/// </summary>
+	/// <returns>The access token</returns>
+	/// <exception cref="HttpRequestException"></exception>
+	public async Task<string> GetAccessToken()
+	{
+		if (Options.AccessToken is null ||
+			(_accessTokenExpiryDateTimeUtc is not null && _accessTokenExpiryDateTimeUtc < DateTime.UtcNow)
+		)
+		{
+			await EnsureAccessTokenUpdatedAsync(Options).ConfigureAwait(false);
+			return Options.AccessToken ?? throw new HttpRequestException("Unable to fetch the access token.");
+		}
+		throw new HttpRequestException("Unable to fetch the access token.");
+	}
+
 	public MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options)
 		: base(GetSettings(options ?? throw new ArgumentNullException(nameof(options))))
 	{
