@@ -25,6 +25,7 @@ public class MicrosoftDynamicsClient : ODataClient
 			await EnsureAccessTokenUpdatedAsync(Options).ConfigureAwait(false);
 			return Options.AccessToken ?? throw new HttpRequestException("Unable to fetch the access token.");
 		}
+
 		throw new HttpRequestException("Unable to fetch the access token.");
 	}
 
