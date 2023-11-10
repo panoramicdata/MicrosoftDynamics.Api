@@ -16,17 +16,18 @@ public class MicrosoftDynamicsClient : ODataClient
 	/// </summary>
 	/// <returns>The access token</returns>
 	/// <exception cref="HttpRequestException"></exception>
-	public async Task<string> GetAccessToken()
+	public async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken)
 	{
 		if (Options.AccessToken is null ||
 			(_accessTokenExpiryDateTimeUtc is not null && _accessTokenExpiryDateTimeUtc < DateTime.UtcNow)
 		)
 		{
-			await EnsureAccessTokenUpdatedAsync(Options).ConfigureAwait(false);
+			await EnsureAccessTokenUpdatedAsync(Options, cancellationToken)
+				.ConfigureAwait(false);
 			return Options.AccessToken ?? throw new HttpRequestException("Unable to fetch the access token.");
 		}
 
-		throw new HttpRequestException("Unable to fetch the access token.");
+		return Options.AccessToken;
 	}
 
 	public MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options)
@@ -90,11 +91,14 @@ public class MicrosoftDynamicsClient : ODataClient
 				Encoding.UTF8,
 				"application/json")
 		};
-		await UpdateRequestHeadersAndLog(Options, request)
+
+		await UpdateRequestHeadersAndLog(Options, request, cancellationToken)
 			.ConfigureAwait(false);
+
 		var responseMessage = await httpClient
 			.SendAsync(request, cancellationToken)
 			.ConfigureAwait(false);
+
 		await LogResponseAsync(Options, responseMessage)
 			.ConfigureAwait(false);
 
@@ -128,7 +132,7 @@ public class MicrosoftDynamicsClient : ODataClient
 
 		settings.BeforeRequestAsync += async (HttpRequestMessage request) =>
 		{
-			await UpdateRequestHeadersAndLog(options, request).ConfigureAwait(false);
+			await UpdateRequestHeadersAndLog(options, request, default).ConfigureAwait(false);
 		};
 
 		settings.AfterResponseAsync += async (HttpResponseMessage responseMessage) =>
@@ -139,7 +143,9 @@ public class MicrosoftDynamicsClient : ODataClient
 		return settings;
 	}
 
-	private static async Task LogResponseAsync(MicrosoftDynamicsClientOptions options, HttpResponseMessage responseMessage)
+	private static async Task LogResponseAsync(
+		MicrosoftDynamicsClientOptions options,
+		HttpResponseMessage responseMessage)
 	{
 		if (responseMessage.RequestMessage.RequestUri.ToString().Contains("$metadata"))
 		{
@@ -177,14 +183,17 @@ public class MicrosoftDynamicsClient : ODataClient
 		}
 	}
 
-	private static async Task UpdateRequestHeadersAndLog(MicrosoftDynamicsClientOptions options, HttpRequestMessage request)
+	private static async Task UpdateRequestHeadersAndLog(
+		MicrosoftDynamicsClientOptions options,
+		HttpRequestMessage request,
+		CancellationToken cancellationToken)
 	{
 		if (
 			options.AccessToken is null
 			|| (_accessTokenExpiryDateTimeUtc is not null && _accessTokenExpiryDateTimeUtc < DateTime.UtcNow)
 		)
 		{
-			await EnsureAccessTokenUpdatedAsync(options)
+			await EnsureAccessTokenUpdatedAsync(options, cancellationToken)
 				.ConfigureAwait(false);
 		}
 
@@ -201,7 +210,9 @@ public class MicrosoftDynamicsClient : ODataClient
 		}
 	}
 
-	private static async Task EnsureAccessTokenUpdatedAsync(MicrosoftDynamicsClientOptions options)
+	private static async Task EnsureAccessTokenUpdatedAsync(
+		MicrosoftDynamicsClientOptions options,
+		CancellationToken cancellationToken)
 	{
 		using var authHttpClient = new HttpClient
 		{
@@ -217,14 +228,23 @@ public class MicrosoftDynamicsClient : ODataClient
 				"application/x-www-form-urlencoded")
 		};
 		var response = await authHttpClient
-			.SendAsync(authRequest)
+			.SendAsync(authRequest, cancellationToken)
 			.ConfigureAwait(false);
+
+		if (!response.IsSuccessStatusCode)
+		{
+			throw new InvalidOperationException($"Unable to fetch the access token. {response.StatusCode} {await response.Content.ReadAsStringAsync()}");
+		}
+
 		var responseText = await response
 			.Content
 			.ReadAsStringAsync()
 			.ConfigureAwait(false);
-		var bearerTokenResponse = JsonConvert.DeserializeObject<BearerTokenResponse>(responseText);
-		options.AccessToken = bearerTokenResponse!.AccessToken;
+
+		var bearerTokenResponse = JsonConvert.DeserializeObject<BearerTokenResponse>(responseText)
+			?? throw new InvalidOperationException("Unable to fetch the access token.");
+
+		options.AccessToken = bearerTokenResponse.AccessToken;
 		_accessTokenExpiryDateTimeUtc = DateTime.UtcNow + TimeSpan.FromSeconds(Math.Max(0, bearerTokenResponse.ExpiresIn - 10));
 	}
 
