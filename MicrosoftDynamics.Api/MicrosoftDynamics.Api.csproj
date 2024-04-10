@@ -9,7 +9,7 @@
 		<ApplicationIcon>icon.ico</ApplicationIcon>
 		<Authors>Panoramic Data Limited</Authors>
 		<PackageProjectUrl>https://github.com/panoramicdata/MicrosoftDynamics.Api/</PackageProjectUrl>
-		<Copyright>Copyright © Panoramic Data Limited 2021-2022</Copyright>
+		<Copyright>Copyright © Panoramic Data Limited 2021-2024</Copyright>
 		<PackageLicenseUrl></PackageLicenseUrl>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageIcon>Icon.png</PackageIcon>
@@ -24,14 +24,14 @@
 		<RepositoryUrl>https://github.com/panoramicdata/MicrosoftDynamics.Api/</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReleaseNotes>
-			Added ClearODataClientMetaDataCache function to call ClearMetaDataCache() on the OData Client
+			Code tidy
 		</PackageReleaseNotes>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 		<PackageReference Include="Simple.OData.Client" Version="6.0.1" />
 	</ItemGroup>

@@ -2,12 +2,12 @@
 
 namespace MicrosoftDynamics.Api;
 
-public class MicrosoftDynamicsClient : ODataClient
+public class MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : ODataClient(GetSettings(options ?? throw new ArgumentNullException(nameof(options))))
 {
 	private static Uri? _uri;
 	private static DateTime? _accessTokenExpiryDateTimeUtc;
 
-	public MicrosoftDynamicsClientOptions Options { get; }
+	public MicrosoftDynamicsClientOptions Options { get; } = options;
 
 	public static void ClearODataClientMetaDataCache() => ClearMetadataCache();
 
@@ -28,12 +28,6 @@ public class MicrosoftDynamicsClient : ODataClient
 		}
 
 		return Options.AccessToken;
-	}
-
-	public MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options)
-		: base(GetSettings(options ?? throw new ArgumentNullException(nameof(options))))
-	{
-		Options = options;
 	}
 
 	/// <summary>
