@@ -59,18 +59,7 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// <summary>
 	/// Clears the OData client metadata cache. This is a no-op as the new OData client does not cache metadata.
 	/// </summary>
-	[Obsolete("The new OData client does not cache metadata. Use cache handling options on the ", true)]
-	public static void ClearODataClientMetaDataCache()
-	{
-	}
-
-	/// <summary>
-	/// Creates a non-generic query builder for dynamic entity queries.
-	/// </summary>
-	/// <param name="entitySetName">The entity set name (e.g., "incidents").</param>
-	/// <returns>A query builder for Dictionary entities.</returns>
-	public ODataQueryBuilder<Dictionary<string, object?>> For(string entitySetName)
-		=> ODataClient.For<Dictionary<string, object?>>(entitySetName);
+	public void ClearODataClientMetaDataCache() => ODataClient.InvalidateMetadataCache();
 
 	/// <summary>
 	/// Finds multiple entries using a raw OData query string.
