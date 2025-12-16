@@ -37,6 +37,22 @@ function Exit-WithError {
     exit 1
 }
 
+function Get-NbgvPath {
+    # Try to find nbgv in PATH first
+    $nbgvInPath = Get-Command nbgv -ErrorAction SilentlyContinue
+    if ($nbgvInPath) {
+        return $nbgvInPath.Source
+    }
+    
+    # Try the default global tools location
+    $defaultPath = Join-Path $env:USERPROFILE ".dotnet\tools\nbgv.exe"
+    if (Test-Path $defaultPath) {
+        return $defaultPath
+    }
+    
+    return $null
+}
+
 # Step 1: Check for clean git working directory
 Write-Step "Checking git working directory status"
 
@@ -54,9 +70,14 @@ Write-Host "Git working directory is clean" -ForegroundColor Green
 # Step 2: Determine Nerdbank GitVersioning version
 Write-Step "Determining version from Nerdbank GitVersioning"
 
-$versionOutput = dotnet nbgv get-version --format json 2>&1
+$nbgvPath = Get-NbgvPath
+if (-not $nbgvPath) {
+    Exit-WithError "nbgv tool not found. Install it with: dotnet tool install -g nbgv"
+}
+
+$versionOutput = & $nbgvPath get-version --format json 2>&1
 if ($LASTEXITCODE -ne 0) {
-    Exit-WithError "Failed to get version from Nerdbank GitVersioning. Ensure nbgv tool is installed: dotnet tool install -g nbgv`n$versionOutput"
+    Exit-WithError "Failed to get version from Nerdbank GitVersioning: $versionOutput"
 }
 
 $versionInfo = $versionOutput | ConvertFrom-Json
@@ -97,9 +118,8 @@ if ($SkipTests) {
 } else {
     Write-Step "Running unit tests"
     
-    $testResult = dotnet test --configuration Release --no-restore 2>&1
+    dotnet test --configuration Release
     if ($LASTEXITCODE -ne 0) {
-        Write-Host $testResult
         Exit-WithError "Unit tests failed"
     }
     
@@ -117,9 +137,8 @@ if (Test-Path $outputPath) {
     Remove-Item $outputPath -Recurse -Force
 }
 
-$buildResult = dotnet pack $projectPath --configuration Release --output $outputPath 2>&1
+dotnet pack $projectPath --configuration Release --output $outputPath
 if ($LASTEXITCODE -ne 0) {
-    Write-Host $buildResult
     Exit-WithError "Failed to build package"
 }
 
@@ -136,9 +155,8 @@ Write-Step "Publishing to NuGet.org"
 
 Write-Host "Publishing: $($packageFile.Name)"
 
-$pushResult = dotnet nuget push $packageFile.FullName --api-key $nugetKey --source https://api.nuget.org/v3/index.json --skip-duplicate 2>&1
+dotnet nuget push $packageFile.FullName --api-key $nugetKey --source https://api.nuget.org/v3/index.json --skip-duplicate
 if ($LASTEXITCODE -ne 0) {
-    Write-Host $pushResult
     Exit-WithError "Failed to publish package to NuGet.org"
 }
 
