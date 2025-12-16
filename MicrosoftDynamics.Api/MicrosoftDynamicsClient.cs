@@ -150,6 +150,14 @@ public class MicrosoftDynamicsClient : IDisposable
 		=> ODataClient.CreateBatch();
 
 	/// <summary>
+	/// Gets the OData service metadata from the $metadata endpoint.
+	/// </summary>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	/// <returns>The parsed OData metadata.</returns>
+	public Task<ODataMetadata> GetMetadataAsync(CancellationToken cancellationToken = default)
+		=> ODataClient.GetMetadataAsync(null, cancellationToken);
+
+	/// <summary>
 	/// This permits updates using @odata.bind. You will have to add a parameter for the namespace, like:
 	/// - "@odata.type": "#Microsoft.Dynamics.CRM.incident"
 	/// </summary>
