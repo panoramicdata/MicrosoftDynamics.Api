@@ -1,4 +1,4 @@
-﻿using MicrosoftDynamics.Api.Extensions;
+using MicrosoftDynamics.Api.Extensions;
 
 namespace MicrosoftDynamics.Api;
 
@@ -53,6 +53,98 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// Gets the underlying OData client for advanced operations.
 	/// </summary>
 	public ODataClient ODataClient { get; }
+
+	#region Backward Compatibility Methods
+
+	/// <summary>
+	/// Clears the OData client metadata cache. This is a no-op as the new OData client does not cache metadata.
+	/// </summary>
+	[Obsolete("The new OData client does not cache metadata. Use cache handling options on the ", true)]
+	public static void ClearODataClientMetaDataCache()
+	{
+	}
+
+	/// <summary>
+	/// Creates a non-generic query builder for dynamic entity queries.
+	/// </summary>
+	/// <param name="entitySetName">The entity set name (e.g., "incidents").</param>
+	/// <returns>A query builder for Dictionary entities.</returns>
+	public ODataQueryBuilder<Dictionary<string, object?>> For(string entitySetName)
+		=> ODataClient.For<Dictionary<string, object?>>(entitySetName);
+
+	/// <summary>
+	/// Finds multiple entries using a raw OData query string.
+	/// </summary>
+	/// <param name="query">The raw OData query (e.g., "incidents?$filter=statecode eq 0").</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	/// <returns>The matching entities as dictionaries.</returns>
+	public async Task<IEnumerable<IDictionary<string, object?>>> FindEntriesAsync(
+		string query,
+		CancellationToken cancellationToken = default)
+	{
+		var document = await ODataClient.GetRawAsync(query, null, cancellationToken).ConfigureAwait(false);
+		return ParseJsonArrayToDictionaries(document);
+	}
+
+	/// <summary>
+	/// Finds a single entry using a raw OData query string.
+	/// </summary>
+	/// <param name="query">The raw OData query (e.g., "incidents(guid)").</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	/// <returns>The entity as a dictionary, or null if not found.</returns>
+	public async Task<IDictionary<string, object?>?> FindEntryAsync(
+		string query,
+		CancellationToken cancellationToken = default)
+	{
+		var document = await ODataClient.GetRawAsync(query, null, cancellationToken).ConfigureAwait(false);
+		return ParseJsonElementToDictionary(document.RootElement);
+	}
+
+	private static List<IDictionary<string, object?>> ParseJsonArrayToDictionaries(JsonDocument document)
+	{
+		var results = new List<IDictionary<string, object?>>();
+		var root = document.RootElement;
+
+		if (root.TryGetProperty("value", out var valueArray) && valueArray.ValueKind == JsonValueKind.Array)
+		{
+			foreach (var item in valueArray.EnumerateArray())
+			{
+				results.Add(ParseJsonElementToDictionary(item));
+			}
+		}
+
+		return results;
+	}
+
+	private static Dictionary<string, object?> ParseJsonElementToDictionary(JsonElement element)
+	{
+		var dict = new Dictionary<string, object?>();
+		if (element.ValueKind != JsonValueKind.Object)
+		{
+			return dict;
+		}
+
+		foreach (var property in element.EnumerateObject())
+		{
+			dict[property.Name] = GetJsonValue(property.Value);
+		}
+
+		return dict;
+	}
+
+	private static object? GetJsonValue(JsonElement element) => element.ValueKind switch
+	{
+		JsonValueKind.String => element.GetString(),
+		JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
+		JsonValueKind.True => true,
+		JsonValueKind.False => false,
+		JsonValueKind.Null => null,
+		JsonValueKind.Object => ParseJsonElementToDictionary(element),
+		JsonValueKind.Array => element.EnumerateArray().Select(GetJsonValue).ToList(),
+		_ => element.GetRawText()
+	};
+
+	#endregion
 
 	/// <summary>
 	/// Ensure the client has an access token, which can then be used in normal HttpClient requests i.e. not using the client
@@ -154,8 +246,16 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// </summary>
 	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>The parsed OData metadata.</returns>
-	public Task<ODataMetadata> GetMetadataAsync(CancellationToken cancellationToken = default)
-		=> ODataClient.GetMetadataAsync(null, cancellationToken);
+	public Task<ODataMetadata> GetMetadataAsync(CancellationToken cancellationToken)
+		=> ODataClient.GetMetadataAsync(cancellationToken);
+
+	/// <summary>
+	/// Gets the OData service metadata from the $metadata endpoint.
+	/// </summary>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	/// <returns>The parsed OData metadata.</returns>
+	public Task<ODataMetadata> GetMetadataAsync(CacheHandling cacheHandling, CancellationToken cancellationToken)
+		=> ODataClient.GetMetadataAsync(cacheHandling, cancellationToken);
 
 	/// <summary>
 	/// This permits updates using @odata.bind. You will have to add a parameter for the namespace, like:
