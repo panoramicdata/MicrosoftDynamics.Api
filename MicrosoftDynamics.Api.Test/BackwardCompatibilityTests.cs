@@ -17,8 +17,11 @@ public class BackwardCompatibilityTests(ITestOutputHelper output) : TestBase(out
 	public async Task For_NonGeneric_WithTop_GetAsync_Succeeds()
 	{
 		// Uses the new API pattern: client.GetAsync(query, ct)
-		var response = await Client.ODataClient
-			.GetAsync(Client.For("incidents").Top(2), CancellationToken)
+		var response = await Client
+			.ODataClient
+			.For("incidents")
+			.Top(2)
+			.GetAsync(CancellationToken)
 			.ConfigureAwait(true);
 
 		response.Should().NotBeNull();
@@ -30,7 +33,8 @@ public class BackwardCompatibilityTests(ITestOutputHelper output) : TestBase(out
 	{
 		// Uses the new API pattern: client.GetAllAsync(query, ct)
 		var response = await Client.ODataClient
-			.GetAllAsync(Client.For("incidents").Top(5), CancellationToken)
+			.For("incidents").Top(5)
+			.GetAllAsync(CancellationToken)
 			.ConfigureAwait(true);
 
 		response.Should().NotBeNull();
