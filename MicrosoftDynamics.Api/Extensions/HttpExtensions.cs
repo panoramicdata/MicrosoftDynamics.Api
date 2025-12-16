@@ -1,11 +1,15 @@
-﻿namespace MicrosoftDynamics.Api.Extensions;
+﻿using System.Text.Json;
+
+namespace MicrosoftDynamics.Api.Extensions;
 
 internal static class HttpExtensions
 {
+	private static readonly JsonSerializerOptions JsonSerializerOptions = new() { WriteIndented = true };
+
 	internal static string ToDebugString(this HttpHeaders headers)
 		=> string.Join("\n", headers.Select(h => $"{h.Key}={string.Join(", ", h.Value)}"));
 
-	internal static async Task<string> ToDebugStringAsync(this HttpContent content)
+	internal static async Task<string> ToDebugStringAsync(this HttpContent? content)
 	{
 		if (content is null)
 		{
@@ -16,12 +20,21 @@ internal static class HttpExtensions
 			.ReadAsStringAsync()
 			.ConfigureAwait(false);
 
-		return contentString.StartsWith("{", StringComparison.Ordinal)
+		return contentString.StartsWith('{')
 			? FormatJson(contentString)
 			: contentString;
 	}
 
 	private static string FormatJson(string json)
-		=> JsonConvert.SerializeObject(JsonConvert.DeserializeObject(json), Formatting.Indented);
-
+	{
+		try
+		{
+			var doc = JsonDocument.Parse(json);
+			return JsonSerializer.Serialize(doc, JsonSerializerOptions);
+		}
+		catch (JsonException)
+		{
+			return json;
+		}
+	}
 }

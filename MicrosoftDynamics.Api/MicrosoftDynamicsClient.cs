@@ -2,14 +2,57 @@
 
 namespace MicrosoftDynamics.Api;
 
-public class MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : ODataClient(GetSettings(options ?? throw new ArgumentNullException(nameof(options))))
+public class MicrosoftDynamicsClient : IDisposable
 {
-	private static Uri? _uri;
+	private readonly HttpClient _httpClient;
 	private static DateTime? _accessTokenExpiryDateTimeUtc;
+	private bool _disposed;
 
-	public MicrosoftDynamicsClientOptions Options { get; } = options;
+	public MicrosoftDynamicsClientOptions Options { get; }
 
-	public static void ClearODataClientMetaDataCache() => ClearMetadataCache();
+	public MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options)
+	{
+		Options = options ?? throw new ArgumentNullException(nameof(options));
+
+		// Validate the options
+		Options.Validate();
+
+		var baseUri = new Uri(Options.Uri!, $"api/data/v{Options.OdataApiVersion}/");
+
+		_httpClient = new HttpClient
+		{
+			BaseAddress = baseUri
+		};
+
+		var oDataClientOptions = new ODataClientOptions
+		{
+			BaseUrl = baseUri.ToString(),
+			HttpClient = _httpClient,
+			Logger = Options.Logger,
+			ConfigureRequest = request =>
+			{
+				// Synchronously ensure we have a valid token and set the header
+				EnsureAccessTokenUpdatedSync();
+				request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Options.AccessToken);
+
+				if (Options.Logger.IsEnabled(LogLevel.Debug))
+				{
+					Options.Logger.LogDebug(
+						"Sending {RequestMethod} {RequestUri}",
+						request.Method,
+						request.RequestUri
+					);
+				}
+			}
+		};
+
+		ODataClient = new ODataClient(oDataClientOptions);
+	}
+
+	/// <summary>
+	/// Gets the underlying OData client for advanced operations.
+	/// </summary>
+	public ODataClient ODataClient { get; }
 
 	/// <summary>
 	/// Ensure the client has an access token, which can then be used in normal HttpClient requests i.e. not using the client
@@ -22,7 +65,7 @@ public class MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : O
 			(_accessTokenExpiryDateTimeUtc is not null && _accessTokenExpiryDateTimeUtc < DateTime.UtcNow)
 		)
 		{
-			await EnsureAccessTokenUpdatedAsync(Options, cancellationToken)
+			await EnsureAccessTokenUpdatedAsync(cancellationToken)
 				.ConfigureAwait(false);
 			return Options.AccessToken ?? throw new HttpRequestException("Unable to fetch the access token.");
 		}
@@ -31,13 +74,89 @@ public class MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : O
 	}
 
 	/// <summary>
-	/// This permits updates using @odata.bind.   You will have to add a parameter for the namespace, like:
+	/// Gets all entities matching the query, following pagination.
+	/// </summary>
+	/// <typeparam name="T">The entity type.</typeparam>
+	/// <param name="entitySet">Optional entity set name override.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	/// <returns>All matching entities.</returns>
+	public Task<ODataResponse<T>> GetAllAsync<T>(string? entitySet = null, CancellationToken cancellationToken = default)
+		where T : class
+		=> entitySet is null
+			? ODataClient.GetAllAsync(ODataClient.For<T>(), cancellationToken)
+			: ODataClient.GetAllAsync(ODataClient.For<T>(entitySet), cancellationToken);
+
+	/// <summary>
+	/// Gets a page of entities matching the query.
+	/// </summary>
+	/// <typeparam name="T">The entity type.</typeparam>
+	/// <param name="queryBuilder">The query builder.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	/// <returns>A page of matching entities.</returns>
+	public Task<ODataResponse<T>> GetAsync<T>(ODataQueryBuilder<T> queryBuilder, CancellationToken cancellationToken = default)
+		where T : class
+		=> ODataClient.GetAsync(queryBuilder, cancellationToken);
+
+	/// <summary>
+	/// Creates a query builder for the specified entity type.
+	/// </summary>
+	/// <typeparam name="T">The entity type.</typeparam>
+	/// <param name="entitySet">Optional entity set name override.</param>
+	/// <returns>A query builder for building OData queries.</returns>
+	public ODataQueryBuilder<T> For<T>(string? entitySet = null)
+		where T : class
+		=> entitySet is null
+			? ODataClient.For<T>()
+			: ODataClient.For<T>(entitySet);
+
+	/// <summary>
+	/// Creates an entity.
+	/// </summary>
+	/// <typeparam name="T">The entity type.</typeparam>
+	/// <param name="entitySet">The entity set name.</param>
+	/// <param name="entity">The entity to create.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	/// <returns>The created entity.</returns>
+	public Task<T> CreateAsync<T>(string entitySet, T entity, CancellationToken cancellationToken = default)
+		where T : class
+		=> ODataClient.CreateAsync(entitySet, entity, null, cancellationToken);
+
+	/// <summary>
+	/// Updates an entity.
+	/// </summary>
+	/// <typeparam name="T">The entity type.</typeparam>
+	/// <param name="entitySet">The entity set name.</param>
+	/// <param name="key">The entity key.</param>
+	/// <param name="entity">The entity updates.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	public Task UpdateAsync<T>(string entitySet, object key, object entity, CancellationToken cancellationToken = default)
+		where T : class
+		=> ODataClient.UpdateAsync<T>(entitySet, key, entity, null, cancellationToken);
+
+	/// <summary>
+	/// Deletes an entity.
+	/// </summary>
+	/// <param name="entitySet">The entity set name.</param>
+	/// <param name="key">The entity key.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	public Task DeleteAsync(string entitySet, object key, CancellationToken cancellationToken = default)
+		=> ODataClient.DeleteAsync(entitySet, key, null, cancellationToken);
+
+	/// <summary>
+	/// Creates a batch builder for executing multiple operations in a single request.
+	/// </summary>
+	/// <returns>A batch builder.</returns>
+	public ODataBatchBuilder CreateBatch()
+		=> ODataClient.CreateBatch();
+
+	/// <summary>
+	/// This permits updates using @odata.bind. You will have to add a parameter for the namespace, like:
 	/// - "@odata.type": "#Microsoft.Dynamics.CRM.incident"
 	/// </summary>
 	/// <param name="path"></param>
 	/// <param name="entity"></param>
 	/// <param name="cancellationToken"></param>
-	/// <returns>The resulting body, interpreted as a JObject</returns>
+	/// <returns>The GUID of the created entity</returns>
 	public async Task<Guid> PostAsync(
 		string path,
 		object entity,
@@ -56,7 +175,7 @@ public class MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : O
 	}
 
 	/// <summary>
-	/// This permits updates using @odata.bind.   You will have to add a parameter for the namespace, like:
+	/// This permits updates using @odata.bind. You will have to add a parameter for the namespace, like:
 	/// - "@odata.type": "#Microsoft.Dynamics.CRM.incident"
 	/// </summary>
 	/// <param name="path"></param>
@@ -66,7 +185,7 @@ public class MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : O
 		string path,
 		object entity,
 		CancellationToken cancellationToken)
-		=> _ = await SendAsync(new HttpMethod("PATCH"), path, entity, cancellationToken).ConfigureAwait(false);
+		=> _ = await SendAsync(HttpMethod.Patch, path, entity, cancellationToken).ConfigureAwait(false);
 
 	private async Task<HttpResponseMessage> SendAsync(
 		HttpMethod httpMethod,
@@ -74,37 +193,31 @@ public class MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : O
 		object entity,
 		CancellationToken cancellationToken)
 	{
-		using var httpClient = new HttpClient
-		{
-			BaseAddress = _uri!
-		};
-		var requestBody = JsonConvert.SerializeObject(entity);
+		var requestBody = JsonSerializer.Serialize(entity);
 		using var request = new HttpRequestMessage(httpMethod, path)
 		{
-			Content = new StringContent(requestBody,
-				Encoding.UTF8,
-				"application/json")
+			Content = new StringContent(requestBody, Encoding.UTF8, new MediaTypeHeaderValue("application/json"))
 		};
 
-		await UpdateRequestHeadersAndLog(Options, request, cancellationToken)
+		await UpdateRequestHeadersAndLogAsync(request, cancellationToken)
 			.ConfigureAwait(false);
 
-		var responseMessage = await httpClient
+		var responseMessage = await _httpClient
 			.SendAsync(request, cancellationToken)
 			.ConfigureAwait(false);
 
-		await LogResponseAsync(Options, responseMessage)
+		await LogResponseAsync(responseMessage)
 			.ConfigureAwait(false);
 
 		if (!responseMessage.IsSuccessStatusCode)
 		{
 			var responseBody = await responseMessage
 				.Content
-				.ReadAsStringAsync()
+				.ReadAsStringAsync(cancellationToken)
 				.ConfigureAwait(false);
 
 			throw new InvalidOperationException(
-				$"Path: {_uri!}/{path} {responseMessage.StatusCode}\n" +
+				$"Path: {_httpClient.BaseAddress}{path} {responseMessage.StatusCode}\n" +
 				$"Request Headers: {request.Headers}\n" +
 				$"Request Body: {requestBody}\n" +
 				$"Response Headers: {responseMessage.Headers}\n" +
@@ -115,56 +228,32 @@ public class MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : O
 		return responseMessage;
 	}
 
-	private static ODataClientSettings GetSettings(MicrosoftDynamicsClientOptions options)
+	private async Task LogResponseAsync(HttpResponseMessage responseMessage)
 	{
-		// Validate the options
-		options.Validate();
-		// The options are valid.
-
-		_uri = new Uri(options.Uri, $"api/data/v{options.OdataApiVersion}/");
-		var settings = new ODataClientSettings(_uri);
-
-		settings.BeforeRequestAsync += async (HttpRequestMessage request) =>
+		if (responseMessage.RequestMessage?.RequestUri?.ToString().Contains("$metadata", StringComparison.Ordinal) == true)
 		{
-			await UpdateRequestHeadersAndLog(options, request, default).ConfigureAwait(false);
-		};
-
-		settings.AfterResponseAsync += async (HttpResponseMessage responseMessage) =>
-		{
-			await LogResponseAsync(options, responseMessage).ConfigureAwait(false);
-		};
-
-		return settings;
-	}
-
-	private static async Task LogResponseAsync(
-		MicrosoftDynamicsClientOptions options,
-		HttpResponseMessage responseMessage)
-	{
-		if (responseMessage.RequestMessage.RequestUri.ToString().Contains("$metadata"))
-		{
-			if (options.LogMetadata)
+			if (Options.LogMetadata)
 			{
-				if (options.Logger.IsEnabled(LogLevel.Trace))
+				if (Options.Logger.IsEnabled(LogLevel.Trace))
 				{
-					options.Logger.LogTrace(
-				  "Received {StatusCode}\n{Headers}\n{ResponseBody}",
-				  responseMessage.StatusCode,
-				  responseMessage.Headers.ToDebugString(),
-				  await responseMessage.Content.ToDebugStringAsync().ConfigureAwait(false)
-				  );
+					Options.Logger.LogTrace(
+						"Received {StatusCode}\n{Headers}\n{ResponseBody}",
+						responseMessage.StatusCode,
+						responseMessage.Headers.ToDebugString(),
+						await responseMessage.Content.ToDebugStringAsync().ConfigureAwait(false)
+					);
 				}
 			}
 			else
 			{
-				options.Logger.LogTrace("Metadata received");
+				Options.Logger.LogTrace("Metadata received");
 			}
 		}
 		else
 		{
-			if (options.Logger.IsEnabled(LogLevel.Debug))
+			if (Options.Logger.IsEnabled(LogLevel.Debug))
 			{
-				options.Logger.LogDebug(
+				Options.Logger.LogDebug(
 					"Received {StatusCode}\n{Headers}\n{ResponseBody}",
 					responseMessage.StatusCode,
 					responseMessage.Headers.ToDebugString(),
@@ -172,54 +261,68 @@ public class MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : O
 						.Content
 						.ToDebugStringAsync()
 						.ConfigureAwait(false)
-					);
+				);
 			}
 		}
 	}
 
-	private static async Task UpdateRequestHeadersAndLog(
-		MicrosoftDynamicsClientOptions options,
+	private async Task UpdateRequestHeadersAndLogAsync(
 		HttpRequestMessage request,
 		CancellationToken cancellationToken)
 	{
 		if (
-			options.AccessToken is null
+			Options.AccessToken is null
 			|| (_accessTokenExpiryDateTimeUtc is not null && _accessTokenExpiryDateTimeUtc < DateTime.UtcNow)
 		)
 		{
-			await EnsureAccessTokenUpdatedAsync(options, cancellationToken)
+			await EnsureAccessTokenUpdatedAsync(cancellationToken)
 				.ConfigureAwait(false);
 		}
 
-		request.Headers.Add("Authorization", "Bearer " + options.AccessToken);
-		if (options.Logger.IsEnabled(LogLevel.Debug))
+		request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Options.AccessToken);
+		if (Options.Logger.IsEnabled(LogLevel.Debug))
 		{
-			options.Logger.LogDebug(
-			"Sending {RequestMethod} {RequestUri}\n{Headers}\n{Content}",
-			request.Method,
-			request.RequestUri,
-			request.Headers.ToDebugString(),
-			await request.Content.ToDebugStringAsync().ConfigureAwait(false)
+			Options.Logger.LogDebug(
+				"Sending {RequestMethod} {RequestUri}\n{Headers}\n{Content}",
+				request.Method,
+				request.RequestUri,
+				request.Headers.ToDebugString(),
+				await request.Content.ToDebugStringAsync().ConfigureAwait(false)
 			);
 		}
 	}
 
-	private static async Task EnsureAccessTokenUpdatedAsync(
-		MicrosoftDynamicsClientOptions options,
-		CancellationToken cancellationToken)
+	/// <summary>
+	/// Synchronous version of token update for use in ConfigureRequest callback.
+	/// </summary>
+	private void EnsureAccessTokenUpdatedSync()
+	{
+		if (
+			Options.AccessToken is null
+			|| (_accessTokenExpiryDateTimeUtc is not null && _accessTokenExpiryDateTimeUtc < DateTime.UtcNow)
+		)
+		{
+			// Use Task.Run to avoid deadlock on sync-over-async
+			Task.Run(async () => await EnsureAccessTokenUpdatedAsync(CancellationToken.None).ConfigureAwait(false))
+				.GetAwaiter()
+				.GetResult();
+		}
+	}
+
+	private async Task EnsureAccessTokenUpdatedAsync(CancellationToken cancellationToken)
 	{
 		using var authHttpClient = new HttpClient
 		{
-			BaseAddress = options.AuthenticationUri
+			BaseAddress = Options.AuthenticationUri
 		};
-		authHttpClient.DefaultRequestHeaders.Authorization = new("Basic", Base64Encode($"{options.ClientId}:{options.ClientSecret}"));
-		var scope = HttpUtility.UrlEncode($"{options.Uri!.ToString().TrimEnd('/')}/.default");
+		authHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Base64Encode($"{Options.ClientId}:{Options.ClientSecret}"));
+		var scope = Uri.EscapeDataString($"{Options.Uri!.ToString().TrimEnd('/')}/.default");
 		using var authRequest = new HttpRequestMessage(HttpMethod.Post, "")
 		{
 			Content = new StringContent(
 				$"grant_type=client_credentials&scope={scope}",
 				Encoding.UTF8,
-				"application/x-www-form-urlencoded")
+				new MediaTypeHeaderValue("application/x-www-form-urlencoded"))
 		};
 		var response = await authHttpClient
 			.SendAsync(authRequest, cancellationToken)
@@ -227,18 +330,19 @@ public class MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : O
 
 		if (!response.IsSuccessStatusCode)
 		{
-			throw new InvalidOperationException($"Unable to fetch the access token. {response.StatusCode} {await response.Content.ReadAsStringAsync()}");
+			var errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+			throw new InvalidOperationException($"Unable to fetch the access token. {response.StatusCode} {errorContent}");
 		}
 
 		var responseText = await response
 			.Content
-			.ReadAsStringAsync()
+			.ReadAsStringAsync(cancellationToken)
 			.ConfigureAwait(false);
 
-		var bearerTokenResponse = JsonConvert.DeserializeObject<BearerTokenResponse>(responseText)
+		var bearerTokenResponse = JsonSerializer.Deserialize<BearerTokenResponse>(responseText)
 			?? throw new InvalidOperationException("Unable to fetch the access token.");
 
-		options.AccessToken = bearerTokenResponse.AccessToken;
+		Options.AccessToken = bearerTokenResponse.AccessToken;
 		_accessTokenExpiryDateTimeUtc = DateTime.UtcNow + TimeSpan.FromSeconds(Math.Max(0, bearerTokenResponse.ExpiresIn - 10));
 	}
 
@@ -246,5 +350,25 @@ public class MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options) : O
 	{
 		var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
 		return Convert.ToBase64String(plainTextBytes);
+	}
+
+	public void Dispose()
+	{
+		Dispose(true);
+		GC.SuppressFinalize(this);
+	}
+
+	protected virtual void Dispose(bool disposing)
+	{
+		if (!_disposed)
+		{
+			if (disposing)
+			{
+				(ODataClient as IDisposable)?.Dispose();
+				_httpClient.Dispose();
+			}
+
+			_disposed = true;
+		}
 	}
 }

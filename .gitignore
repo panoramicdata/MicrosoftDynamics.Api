@@ -350,3 +350,6 @@ MigrationBackup/
 .ionide/
 
 appsettings.json
+
+# NuGet API key
+nuget-key.txt

@@ -21,3 +21,10 @@ using System.Diagnostics.CodeAnalysis;
 	Scope = "namespaceanddescendants",
 	Target = "~N:MicrosoftDynamics.Api.Test")
 ]
+[assembly: SuppressMessage(
+	"Design",
+	"CA1515:Consider making public types internal",
+	Justification = "xUnit requires test classes to be public",
+	Scope = "namespaceanddescendants",
+	Target = "~N:MicrosoftDynamics.Api.Test")
+]

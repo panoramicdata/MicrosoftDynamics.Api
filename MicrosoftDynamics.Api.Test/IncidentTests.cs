@@ -1,13 +1,14 @@
 namespace MicrosoftDynamics.Api.Test;
 
-public class IncidentTests(ITestOutputHelper testOutputHelper) : TestBase(testOutputHelper)
+public class IncidentTests(ITestOutputHelper output) : TestBase(output)
 {
 	[Fact]
 	public async Task GetIncidents_Succeeds()
 	{
+		var query = Client.For<Dictionary<string, object>>("incidents").Top(3);
 		var result = await Client
-			.FindEntriesAsync("incidents?$top=3")
+			.GetAsync(query, CancellationToken)
 			.ConfigureAwait(true);
-		result.Should().NotBeNullOrEmpty();
+		result.Value.Should().NotBeNullOrEmpty();
 	}
 }

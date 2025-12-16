@@ -1,17 +1,18 @@
-﻿namespace MicrosoftDynamics.Api;
+﻿using System.Text.Json.Serialization;
 
-[DataContract]
+namespace MicrosoftDynamics.Api;
+
 public class BearerTokenResponse
 {
-	[DataMember(Name = "token_type")]
+	[JsonPropertyName("token_type")]
 	public string TokenType { get; set; } = string.Empty;
 
-	[DataMember(Name = "expires_in")]
+	[JsonPropertyName("expires_in")]
 	public int ExpiresIn { get; set; }
 
-	[DataMember(Name = "ext_expires_in")]
+	[JsonPropertyName("ext_expires_in")]
 	public int ExtExpiresIn { get; set; }
 
-	[DataMember(Name = "access_token")]
+	[JsonPropertyName("access_token")]
 	public string AccessToken { get; set; } = string.Empty;
 }
