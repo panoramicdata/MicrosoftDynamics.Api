@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="global.json" />
+    <File Path="LICENSE" />
+    <File Path="MicrosoftDynamics.Api.dic" />
+    <File Path="README.md" />
+    <File Path="version.json" />
+  </Folder>
+  <Project Path="MicrosoftDynamics.Api.Test/MicrosoftDynamics.Api.Test.csproj" />
+  <Project Path="MicrosoftDynamics.Api/MicrosoftDynamics.Api.csproj" />
+</Solution>
