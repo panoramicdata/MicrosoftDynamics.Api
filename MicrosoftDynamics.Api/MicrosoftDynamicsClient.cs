@@ -191,6 +191,15 @@ public class MicrosoftDynamicsClient : IDisposable
 			: ODataClient.For<T>(entitySet);
 
 	/// <summary>
+	/// Creates a query builder for the specified entity type.
+	/// </summary>
+	/// <typeparam name="T">The entity type.</typeparam>
+	/// <param name="entitySet">Optional entity set name override.</param>
+	/// <returns>A query builder for building OData queries.</returns>
+	public FluentODataQueryBuilder For(string entitySet)
+		=> ODataClient.For(entitySet);
+
+	/// <summary>
 	/// Creates an entity.
 	/// </summary>
 	/// <typeparam name="T">The entity type.</typeparam>
