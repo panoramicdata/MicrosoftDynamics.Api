@@ -193,7 +193,6 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// <summary>
 	/// Creates a query builder for the specified entity type.
 	/// </summary>
-	/// <typeparam name="T">The entity type.</typeparam>
 	/// <param name="entitySet">Optional entity set name override.</param>
 	/// <returns>A query builder for building OData queries.</returns>
 	public FluentODataQueryBuilder For(string entitySet)
@@ -250,6 +249,7 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// <summary>
 	/// Gets the OData service metadata from the $metadata endpoint.
 	/// </summary>
+	/// <param name="cacheHandling">Cache handling strategy.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>The parsed OData metadata.</returns>
 	public Task<ODataMetadata> GetMetadataAsync(CacheHandling cacheHandling, CancellationToken cancellationToken)
