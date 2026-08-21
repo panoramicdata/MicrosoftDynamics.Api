@@ -322,11 +322,14 @@ public class MicrosoftDynamicsClient : IDisposable
 				.ReadAsStringAsync(cancellationToken)
 				.ConfigureAwait(false);
 
+			// Headers are rendered via ToDebugString so that credential-bearing headers are redacted.
+			// Interpolating the header collections directly would write the Authorization header, and
+			// therefore a usable access token, into the exception message and from there into any log.
 			throw new InvalidOperationException(
 				$"Path: {_httpClient.BaseAddress}{path} {responseMessage.StatusCode}\n" +
-				$"Request Headers: {request.Headers}\n" +
+				$"Request Headers: {request.Headers.ToDebugString()}\n" +
 				$"Request Body: {requestBody}\n" +
-				$"Response Headers: {responseMessage.Headers}\n" +
+				$"Response Headers: {responseMessage.Headers.ToDebugString()}\n" +
 				$"Response Body: {responseBody}"
 				);
 		}
