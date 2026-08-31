@@ -65,7 +65,6 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// Finds multiple entries using a raw OData query string.
 	/// </summary>
 	/// <param name="query">The raw OData query (e.g., "incidents?$filter=statecode eq 0").</param>
-	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>The matching entities as dictionaries.</returns>
 	public Task<IEnumerable<IDictionary<string, object?>>> FindEntriesAsync(string query)
 		=> FindEntriesAsync(query, CancellationToken.None);
@@ -74,6 +73,7 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// Finds multiple entries using a raw OData query string.
 	/// </summary>
 	/// <param name="query">The raw OData query (e.g., "incidents?$filter=statecode eq 0").</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>The matching entities as dictionaries.</returns>
 	public async Task<IEnumerable<IDictionary<string, object?>>> FindEntriesAsync(
 		string query,
@@ -87,7 +87,6 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// Finds a single entry using a raw OData query string.
 	/// </summary>
 	/// <param name="query">The raw OData query (e.g., "incidents(guid)").</param>
-	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>The entity as a dictionary, or null if not found.</returns>
 	public Task<IDictionary<string, object?>?> FindEntryAsync(string query)
 		=> FindEntryAsync(query, CancellationToken.None);
@@ -96,6 +95,7 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// Finds a single entry using a raw OData query string.
 	/// </summary>
 	/// <param name="query">The raw OData query (e.g., "incidents(guid)").</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>The entity as a dictionary, or null if not found.</returns>
 	public async Task<IDictionary<string, object?>?> FindEntryAsync(
 		string query,
@@ -207,7 +207,6 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// </summary>
 	/// <typeparam name="T">The entity type.</typeparam>
 	/// <param name="queryBuilder">The query builder.</param>
-	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>A page of matching entities.</returns>
 	public Task<ODataResponse<T>> GetAsync<T>(ODataQueryBuilder<T> queryBuilder)
 		where T : class
@@ -218,6 +217,7 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// </summary>
 	/// <typeparam name="T">The entity type.</typeparam>
 	/// <param name="queryBuilder">The query builder.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>A page of matching entities.</returns>
 	public Task<ODataResponse<T>> GetAsync<T>(ODataQueryBuilder<T> queryBuilder, CancellationToken cancellationToken)
 		where T : class
@@ -258,7 +258,6 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// <typeparam name="T">The entity type.</typeparam>
 	/// <param name="entitySet">The entity set name.</param>
 	/// <param name="entity">The entity to create.</param>
-	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>The created entity.</returns>
 	public Task<T> CreateAsync<T>(string entitySet, T entity)
 		where T : class
@@ -270,6 +269,7 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// <typeparam name="T">The entity type.</typeparam>
 	/// <param name="entitySet">The entity set name.</param>
 	/// <param name="entity">The entity to create.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>The created entity.</returns>
 	public Task<T> CreateAsync<T>(string entitySet, T entity, CancellationToken cancellationToken)
 		where T : class
