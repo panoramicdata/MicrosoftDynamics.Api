@@ -5,7 +5,7 @@ namespace MicrosoftDynamics.Api;
 public class MicrosoftDynamicsClient : IDisposable
 {
 	private readonly HttpClient _httpClient;
-	private static DateTime? _accessTokenExpiryDateTimeUtc;
+	private DateTime? _accessTokenExpiryDateTimeUtc;
 	private bool _disposed;
 
 	public MicrosoftDynamicsClientOptions Options { get; }
@@ -67,9 +67,17 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// <param name="query">The raw OData query (e.g., "incidents?$filter=statecode eq 0").</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>The matching entities as dictionaries.</returns>
+	public Task<IEnumerable<IDictionary<string, object?>>> FindEntriesAsync(string query)
+		=> FindEntriesAsync(query, CancellationToken.None);
+
+	/// <summary>
+	/// Finds multiple entries using a raw OData query string.
+	/// </summary>
+	/// <param name="query">The raw OData query (e.g., "incidents?$filter=statecode eq 0").</param>
+	/// <returns>The matching entities as dictionaries.</returns>
 	public async Task<IEnumerable<IDictionary<string, object?>>> FindEntriesAsync(
 		string query,
-		CancellationToken cancellationToken = default)
+		CancellationToken cancellationToken)
 	{
 		var document = await ODataClient.GetRawAsync(query, null, cancellationToken).ConfigureAwait(false);
 		return ParseJsonArrayToDictionaries(document);
@@ -81,9 +89,17 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// <param name="query">The raw OData query (e.g., "incidents(guid)").</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>The entity as a dictionary, or null if not found.</returns>
+	public Task<IDictionary<string, object?>?> FindEntryAsync(string query)
+		=> FindEntryAsync(query, CancellationToken.None);
+
+	/// <summary>
+	/// Finds a single entry using a raw OData query string.
+	/// </summary>
+	/// <param name="query">The raw OData query (e.g., "incidents(guid)").</param>
+	/// <returns>The entity as a dictionary, or null if not found.</returns>
 	public async Task<IDictionary<string, object?>?> FindEntryAsync(
 		string query,
-		CancellationToken cancellationToken = default)
+		CancellationToken cancellationToken)
 	{
 		var document = await ODataClient.GetRawAsync(query, null, cancellationToken).ConfigureAwait(false);
 		return ParseJsonElementToDictionary(document.RootElement);
@@ -158,10 +174,29 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// Gets all entities matching the query, following pagination.
 	/// </summary>
 	/// <typeparam name="T">The entity type.</typeparam>
-	/// <param name="entitySet">Optional entity set name override.</param>
+	/// <returns>All matching entities.</returns>
+	public Task<ODataResponse<T>> GetAllAsync<T>()
+		where T : class
+		=> GetAllAsync<T>(null, CancellationToken.None);
+
+	/// <summary>
+	/// Gets all entities matching the query, following pagination.
+	/// </summary>
+	/// <typeparam name="T">The entity type.</typeparam>
+	/// <param name="entitySet">Entity set name override.</param>
+	/// <returns>All matching entities.</returns>
+	public Task<ODataResponse<T>> GetAllAsync<T>(string? entitySet)
+		where T : class
+		=> GetAllAsync<T>(entitySet, CancellationToken.None);
+
+	/// <summary>
+	/// Gets all entities matching the query, following pagination.
+	/// </summary>
+	/// <typeparam name="T">The entity type.</typeparam>
+	/// <param name="entitySet">Entity set name override.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>All matching entities.</returns>
-	public Task<ODataResponse<T>> GetAllAsync<T>(string? entitySet = null, CancellationToken cancellationToken = default)
+	public Task<ODataResponse<T>> GetAllAsync<T>(string? entitySet, CancellationToken cancellationToken)
 		where T : class
 		=> entitySet is null
 			? ODataClient.GetAllAsync(ODataClient.For<T>(), cancellationToken)
@@ -174,7 +209,17 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// <param name="queryBuilder">The query builder.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>A page of matching entities.</returns>
-	public Task<ODataResponse<T>> GetAsync<T>(ODataQueryBuilder<T> queryBuilder, CancellationToken cancellationToken = default)
+	public Task<ODataResponse<T>> GetAsync<T>(ODataQueryBuilder<T> queryBuilder)
+		where T : class
+		=> GetAsync(queryBuilder, CancellationToken.None);
+
+	/// <summary>
+	/// Gets a page of entities matching the query.
+	/// </summary>
+	/// <typeparam name="T">The entity type.</typeparam>
+	/// <param name="queryBuilder">The query builder.</param>
+	/// <returns>A page of matching entities.</returns>
+	public Task<ODataResponse<T>> GetAsync<T>(ODataQueryBuilder<T> queryBuilder, CancellationToken cancellationToken)
 		where T : class
 		=> ODataClient.GetAsync(queryBuilder, cancellationToken);
 
@@ -182,9 +227,18 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// Creates a query builder for the specified entity type.
 	/// </summary>
 	/// <typeparam name="T">The entity type.</typeparam>
-	/// <param name="entitySet">Optional entity set name override.</param>
 	/// <returns>A query builder for building OData queries.</returns>
-	public ODataQueryBuilder<T> For<T>(string? entitySet = null)
+	public ODataQueryBuilder<T> For<T>()
+		where T : class
+		=> For<T>(null);
+
+	/// <summary>
+	/// Creates a query builder for the specified entity type.
+	/// </summary>
+	/// <typeparam name="T">The entity type.</typeparam>
+	/// <param name="entitySet">Entity set name override.</param>
+	/// <returns>A query builder for building OData queries.</returns>
+	public ODataQueryBuilder<T> For<T>(string? entitySet)
 		where T : class
 		=> entitySet is null
 			? ODataClient.For<T>()
@@ -206,7 +260,18 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// <param name="entity">The entity to create.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>The created entity.</returns>
-	public Task<T> CreateAsync<T>(string entitySet, T entity, CancellationToken cancellationToken = default)
+	public Task<T> CreateAsync<T>(string entitySet, T entity)
+		where T : class
+		=> CreateAsync(entitySet, entity, CancellationToken.None);
+
+	/// <summary>
+	/// Creates an entity.
+	/// </summary>
+	/// <typeparam name="T">The entity type.</typeparam>
+	/// <param name="entitySet">The entity set name.</param>
+	/// <param name="entity">The entity to create.</param>
+	/// <returns>The created entity.</returns>
+	public Task<T> CreateAsync<T>(string entitySet, T entity, CancellationToken cancellationToken)
 		where T : class
 		=> ODataClient.CreateAsync(entitySet, entity, null, cancellationToken);
 
@@ -217,8 +282,19 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// <param name="entitySet">The entity set name.</param>
 	/// <param name="key">The entity key.</param>
 	/// <param name="entity">The entity updates.</param>
+	public Task UpdateAsync<T>(string entitySet, object key, object entity)
+		where T : class
+		=> UpdateAsync<T>(entitySet, key, entity, CancellationToken.None);
+
+	/// <summary>
+	/// Updates an entity.
+	/// </summary>
+	/// <typeparam name="T">The entity type.</typeparam>
+	/// <param name="entitySet">The entity set name.</param>
+	/// <param name="key">The entity key.</param>
+	/// <param name="entity">The entity updates.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
-	public Task UpdateAsync<T>(string entitySet, object key, object entity, CancellationToken cancellationToken = default)
+	public Task UpdateAsync<T>(string entitySet, object key, object entity, CancellationToken cancellationToken)
 		where T : class
 		=> ODataClient.UpdateAsync<T>(entitySet, key, entity, null, cancellationToken);
 
@@ -227,8 +303,16 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// </summary>
 	/// <param name="entitySet">The entity set name.</param>
 	/// <param name="key">The entity key.</param>
+	public Task DeleteAsync(string entitySet, object key)
+		=> DeleteAsync(entitySet, key, CancellationToken.None);
+
+	/// <summary>
+	/// Deletes an entity.
+	/// </summary>
+	/// <param name="entitySet">The entity set name.</param>
+	/// <param name="key">The entity key.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
-	public Task DeleteAsync(string entitySet, object key, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(string entitySet, object key, CancellationToken cancellationToken)
 		=> ODataClient.DeleteAsync(entitySet, key, null, cancellationToken);
 
 	/// <summary>

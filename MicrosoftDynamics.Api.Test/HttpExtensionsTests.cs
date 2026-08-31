@@ -22,8 +22,11 @@ public class HttpExtensionsTests
 	/// <summary>
 	/// Shaped like a real JWT so that a partial-redaction bug would be visible, but not a real token.
 	/// </summary>
-	private const string FakeJwt =
-		"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0Iiwibm90IjoicmVhbCJ9.c2lnbmF0dXJlLW5vdC1yZWFs";
+	private static readonly string FakeJwt = string.Join(
+		'.',
+		"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9",
+		"eyJzdWIiOiJ0ZXN0Iiwibm90IjoicmVhbCJ9",
+		"c2lnbmF0dXJlLW5vdC1yZWFs");
 
 	[Fact]
 	public void ToDebugString_BearerToken_DoesNotLeakTheCredential()
