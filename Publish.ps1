@@ -105,7 +105,7 @@ gh run watch $runId --repo $repoFullName --exit-status --interval 20
 $runExitCode = $LASTEXITCODE
 
 if ($runExitCode -ne 0) {
-	Write-Output ""
+	Write-Verbose ""
 	Write-Error "The release run did not succeed: https://github.com/$repoFullName/actions/runs/$runId"
 
 	# A refused job - an exhausted Actions budget, for instance - fails before any step runs, so it
@@ -118,7 +118,7 @@ if ($runExitCode -ne 0) {
 		}
 	}
 
-	Write-Output ""
+	Write-Verbose ""
 	Write-Warning "Tag $version is pushed but no package was published. Once the cause is fixed:"
 	Write-Output "  gh run rerun $runId --repo $repoFullName --failed"
 	exit 1
