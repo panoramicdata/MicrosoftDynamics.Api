@@ -1,4 +1,5 @@
-using MicrosoftDynamics.Api.Extensions;
+﻿using MicrosoftDynamics.Api.Extensions;
+using MicrosoftDynamics.Api.Internal;
 
 namespace MicrosoftDynamics.Api;
 
@@ -9,6 +10,10 @@ public class MicrosoftDynamicsClient : IDisposable
 	private bool _disposed;
 
 	public MicrosoftDynamicsClientOptions Options { get; }
+
+	private bool AccessTokenNeedsRefresh
+		=> Options.AccessToken is null
+		|| (_accessTokenExpiryDateTimeUtc is not null && _accessTokenExpiryDateTimeUtc < DateTime.UtcNow);
 
 	public MicrosoftDynamicsClient(MicrosoftDynamicsClientOptions options)
 	{
@@ -80,7 +85,7 @@ public class MicrosoftDynamicsClient : IDisposable
 		CancellationToken cancellationToken)
 	{
 		var document = await ODataClient.GetRawAsync(query, null, cancellationToken).ConfigureAwait(false);
-		return ParseJsonArrayToDictionaries(document);
+		return ODataJsonParser.ParseCollection(document);
 	}
 
 	/// <summary>
@@ -102,52 +107,8 @@ public class MicrosoftDynamicsClient : IDisposable
 		CancellationToken cancellationToken)
 	{
 		var document = await ODataClient.GetRawAsync(query, null, cancellationToken).ConfigureAwait(false);
-		return ParseJsonElementToDictionary(document.RootElement);
+		return ODataJsonParser.ParseEntity(document.RootElement);
 	}
-
-	private static List<IDictionary<string, object?>> ParseJsonArrayToDictionaries(JsonDocument document)
-	{
-		var results = new List<IDictionary<string, object?>>();
-		var root = document.RootElement;
-
-		if (root.TryGetProperty("value", out var valueArray) && valueArray.ValueKind == JsonValueKind.Array)
-		{
-			foreach (var item in valueArray.EnumerateArray())
-			{
-				results.Add(ParseJsonElementToDictionary(item));
-			}
-		}
-
-		return results;
-	}
-
-	private static Dictionary<string, object?> ParseJsonElementToDictionary(JsonElement element)
-	{
-		var dict = new Dictionary<string, object?>();
-		if (element.ValueKind != JsonValueKind.Object)
-		{
-			return dict;
-		}
-
-		foreach (var property in element.EnumerateObject())
-		{
-			dict[property.Name] = GetJsonValue(property.Value);
-		}
-
-		return dict;
-	}
-
-	private static object? GetJsonValue(JsonElement element) => element.ValueKind switch
-	{
-		JsonValueKind.String => element.GetString(),
-		JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
-		JsonValueKind.True => true,
-		JsonValueKind.False => false,
-		JsonValueKind.Null => null,
-		JsonValueKind.Object => ParseJsonElementToDictionary(element),
-		JsonValueKind.Array => element.EnumerateArray().Select(GetJsonValue).ToList(),
-		_ => element.GetRawText()
-	};
 
 	#endregion
 
@@ -158,16 +119,13 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// <exception cref="HttpRequestException"></exception>
 	public async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken)
 	{
-		if (Options.AccessToken is null ||
-			(_accessTokenExpiryDateTimeUtc is not null && _accessTokenExpiryDateTimeUtc < DateTime.UtcNow)
-		)
+		if (AccessTokenNeedsRefresh)
 		{
 			await EnsureAccessTokenUpdatedAsync(cancellationToken)
 				.ConfigureAwait(false);
-			return Options.AccessToken ?? throw new HttpRequestException("Unable to fetch the access token.");
 		}
 
-		return Options.AccessToken;
+		return Options.AccessToken ?? throw new HttpRequestException("Unable to fetch the access token.");
 	}
 
 	/// <summary>
@@ -423,50 +381,42 @@ public class MicrosoftDynamicsClient : IDisposable
 
 	private async Task LogResponseAsync(HttpResponseMessage responseMessage)
 	{
-		if (responseMessage.RequestMessage?.RequestUri?.ToString().Contains("$metadata", StringComparison.Ordinal) == true)
+		var isMetadataResponse = responseMessage
+			.RequestMessage?
+			.RequestUri?
+			.ToString()
+			.Contains("$metadata", StringComparison.Ordinal) == true;
+
+		// Metadata bodies are large and rarely change, so they are logged only when explicitly requested.
+		if (isMetadataResponse && !Options.LogMetadata)
 		{
-			if (Options.LogMetadata)
-			{
-				if (Options.Logger.IsEnabled(LogLevel.Trace))
-				{
-					Options.Logger.LogTrace(
-						"Received {StatusCode}\n{Headers}\n{ResponseBody}",
-						responseMessage.StatusCode,
-						responseMessage.Headers.ToDebugString(),
-						await responseMessage.Content.ToDebugStringAsync().ConfigureAwait(false)
-					);
-				}
-			}
-			else
-			{
-				Options.Logger.LogTrace("Metadata received");
-			}
+			Options.Logger.LogTrace("Metadata received");
+			return;
 		}
-		else
+
+		var logLevel = isMetadataResponse ? LogLevel.Trace : LogLevel.Debug;
+		if (!Options.Logger.IsEnabled(logLevel))
 		{
-			if (Options.Logger.IsEnabled(LogLevel.Debug))
-			{
-				Options.Logger.LogDebug(
-					"Received {StatusCode}\n{Headers}\n{ResponseBody}",
-					responseMessage.StatusCode,
-					responseMessage.Headers.ToDebugString(),
-					await responseMessage
-						.Content
-						.ToDebugStringAsync()
-						.ConfigureAwait(false)
-				);
-			}
+			return;
 		}
+
+		Options.Logger.Log(
+			logLevel,
+			"Received {StatusCode}\n{Headers}\n{ResponseBody}",
+			responseMessage.StatusCode,
+			responseMessage.Headers.ToDebugString(),
+			await responseMessage
+				.Content
+				.ToDebugStringAsync()
+				.ConfigureAwait(false)
+		);
 	}
 
 	private async Task UpdateRequestHeadersAndLogAsync(
 		HttpRequestMessage request,
 		CancellationToken cancellationToken)
 	{
-		if (
-			Options.AccessToken is null
-			|| (_accessTokenExpiryDateTimeUtc is not null && _accessTokenExpiryDateTimeUtc < DateTime.UtcNow)
-		)
+		if (AccessTokenNeedsRefresh)
 		{
 			await EnsureAccessTokenUpdatedAsync(cancellationToken)
 				.ConfigureAwait(false);
@@ -490,10 +440,7 @@ public class MicrosoftDynamicsClient : IDisposable
 	/// </summary>
 	private void EnsureAccessTokenUpdatedSync()
 	{
-		if (
-			Options.AccessToken is null
-			|| (_accessTokenExpiryDateTimeUtc is not null && _accessTokenExpiryDateTimeUtc < DateTime.UtcNow)
-		)
+		if (AccessTokenNeedsRefresh)
 		{
 			// Use Task.Run to avoid deadlock on sync-over-async
 			Task.Run(async () => await EnsureAccessTokenUpdatedAsync(CancellationToken.None).ConfigureAwait(false))
@@ -504,45 +451,12 @@ public class MicrosoftDynamicsClient : IDisposable
 
 	private async Task EnsureAccessTokenUpdatedAsync(CancellationToken cancellationToken)
 	{
-		using var authHttpClient = new HttpClient
-		{
-			BaseAddress = Options.AuthenticationUri
-		};
-		authHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Base64Encode($"{Options.ClientId}:{Options.ClientSecret}"));
-		var scope = Uri.EscapeDataString($"{Options.Uri!.ToString().TrimEnd('/')}/.default");
-		using var authRequest = new HttpRequestMessage(HttpMethod.Post, "")
-		{
-			Content = new StringContent(
-				$"grant_type=client_credentials&scope={scope}",
-				Encoding.UTF8,
-				new MediaTypeHeaderValue("application/x-www-form-urlencoded"))
-		};
-		var response = await authHttpClient
-			.SendAsync(authRequest, cancellationToken)
+		var bearerTokenResponse = await AccessTokenFetcher
+			.FetchAsync(Options, cancellationToken)
 			.ConfigureAwait(false);
-
-		if (!response.IsSuccessStatusCode)
-		{
-			var errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-			throw new InvalidOperationException($"Unable to fetch the access token. {response.StatusCode} {errorContent}");
-		}
-
-		var responseText = await response
-			.Content
-			.ReadAsStringAsync(cancellationToken)
-			.ConfigureAwait(false);
-
-		var bearerTokenResponse = JsonSerializer.Deserialize<BearerTokenResponse>(responseText)
-			?? throw new InvalidOperationException("Unable to fetch the access token.");
 
 		Options.AccessToken = bearerTokenResponse.AccessToken;
 		_accessTokenExpiryDateTimeUtc = DateTime.UtcNow + TimeSpan.FromSeconds(Math.Max(0, bearerTokenResponse.ExpiresIn - 10));
-	}
-
-	private static string Base64Encode(string plainText)
-	{
-		var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
-		return Convert.ToBase64String(plainTextBytes);
 	}
 
 	public void Dispose()
