@@ -24,6 +24,27 @@
     <RepositoryUrl>https://github.com/panoramicdata/MicrosoftDynamics.Api/</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReleaseNotes>
+		10.0.43
+
+		The redaction marker for scheme-prefixed sensitive headers is reordered so that a redacted
+		header can no longer be mistaken for a leaked one by a log search.
+
+		A redacted Authorization header now renders as "Authorization=&lt;redacted Bearer, length 1842&gt;"
+		rather than "Authorization=Bearer &lt;redacted, length 1842&gt;". The same information is present -
+		header name, scheme and credential length - in a different order.
+
+		Why: log stores analyse the message with the standard analyzer, which discards '=', ':' and '&lt;'
+		alike. Both the old redacted render and a genuine "Authorization: Bearer eyJ0..." leak therefore
+		tokenised to "authorization" followed by "bearer", which is exactly the adjacency a phrase query
+		tests for. A search for "Authorization: Bearer" - the obvious way to hunt for leaked tokens -
+		matched every redaction, so 10.0.28's fix could not be shown to be working. Downstream this cost
+		a failed test cycle and a Major security defect raised against correctly-redacted log entries.
+		With the scheme inside the marker, that search returns only genuine leaks.
+
+		Consumers who search their logs for leaked credentials can now rely on a phrase search for
+		"Authorization: Bearer". Anyone parsing the marker's text, or asserting on it in a test, will
+		need updating.
+
 		10.0.42
 
 		Internal refactor only. No public API or behaviour change; no action needed on upgrade.

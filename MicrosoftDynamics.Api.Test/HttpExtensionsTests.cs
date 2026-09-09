@@ -49,7 +49,37 @@ public class HttpExtensionsTests
 
 		var debugString = request.Headers.ToDebugString();
 
-		debugString.Should().Be($"Authorization=Bearer <redacted, length {FakeJwt.Length}>");
+		debugString.Should().Be($"Authorization=<redacted Bearer, length {FakeJwt.Length}>");
+	}
+
+	/// <summary>
+	/// The header name must not be followed immediately by the scheme.
+	/// </summary>
+	/// <remarks>
+	/// This is the whole point of issue #40, and it is why the assertion is phrased as an absence rather
+	/// than left implicit in the exact-string test above. Log stores analyse the message with the
+	/// standard analyzer, which discards '=', ':' and '&lt;' alike, so "Authorization=Bearer ..." and a
+	/// genuine "Authorization: Bearer eyJ0..." leak both tokenise to "authorization" then "bearer". A
+	/// phrase query for "Authorization: Bearer" - the obvious way to hunt for leaked tokens - therefore
+	/// matched this library's *redacted* output, and a working redaction was reported as a live
+	/// credential disclosure. Asserting the adjacency directly means a future reformat of the marker
+	/// cannot quietly reintroduce that collision.
+	/// </remarks>
+	[Theory]
+	[InlineData("Bearer")]
+	[InlineData("Basic")]
+	public void ToDebugString_RedactedHeader_DoesNotPlaceTheSchemeRightAfterTheHeaderName(string scheme)
+	{
+		using var request = new HttpRequestMessage();
+		request.Headers.Authorization = new AuthenticationHeaderValue(scheme, FakeJwt);
+
+		var debugString = request.Headers.ToDebugString();
+
+		debugString.Should().NotContain($"Authorization={scheme}");
+		debugString.Should().NotContain($"Authorization: {scheme}");
+
+		// The scheme is still there to be read - it is only moved inside the marker.
+		debugString.Should().Contain($"<redacted {scheme},");
 	}
 
 	[Fact]
@@ -60,7 +90,7 @@ public class HttpExtensionsTests
 
 		var debugString = request.Headers.ToDebugString();
 
-		debugString.Should().Be("Authorization=Basic <redacted, length 20>");
+		debugString.Should().Be("Authorization=<redacted Basic, length 20>");
 		debugString.Should().NotContain("dXNlcjpwYXNzd29yZA==");
 	}
 
