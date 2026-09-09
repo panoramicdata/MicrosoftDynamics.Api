@@ -24,7 +24,7 @@
     <RepositoryUrl>https://github.com/panoramicdata/MicrosoftDynamics.Api/</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReleaseNotes>
-		10.0.43
+		10.0.45
 
 		The redaction marker for scheme-prefixed sensitive headers is reordered so that a redacted
 		header can no longer be mistaken for a leaked one by a log search.
