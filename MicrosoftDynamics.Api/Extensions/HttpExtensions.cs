@@ -41,9 +41,23 @@ internal static class HttpExtensions
 	/// sensitive one.
 	/// </summary>
 	/// <remarks>
+	/// <para>
 	/// The authentication scheme and the credential length are preserved. That is enough to tell an
 	/// engineer that a credential was sent and roughly what shape it had, which is all diagnosis needs,
 	/// without writing the credential itself somewhere it will be retained and widely readable.
+	/// </para>
+	/// <para>
+	/// The scheme is deliberately rendered <em>inside</em> the redaction marker -
+	/// "Authorization=&lt;redacted Bearer, length 1842&gt;" rather than
+	/// "Authorization=Bearer &lt;redacted, length 1842&gt;". The two carry identical information, but the
+	/// latter cannot be told apart from an actual leak by the search anyone uses to hunt for one. Log
+	/// stores analyse the message with the standard analyzer, which discards '=', ':' and '&lt;' alike,
+	/// so "Authorization=Bearer ..." and "Authorization: Bearer eyJ0..." both tokenise to
+	/// "authorization" then "bearer" - exactly the adjacency a phrase query tests for. Opening the
+	/// marker first moves the scheme off position 1, which keeps this library's success
+	/// distinguishable from its failure. See issue #40: the previous ordering caused a redaction that
+	/// was working correctly to be reported as a live credential disclosure.
+	/// </para>
 	/// </remarks>
 	private static string RedactIfSensitive(string name, IEnumerable<string> values)
 	{
@@ -64,7 +78,7 @@ internal static class HttpExtensions
 
 			if (schemeLength > 0)
 			{
-				return $"{value[..schemeLength]} <redacted, length {value.Length - schemeLength - 1}>";
+				return $"<redacted {value[..schemeLength]}, length {value.Length - schemeLength - 1}>";
 			}
 		}
 
