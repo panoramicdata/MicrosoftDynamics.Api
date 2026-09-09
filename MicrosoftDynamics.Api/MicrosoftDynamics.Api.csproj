@@ -24,6 +24,14 @@
     <RepositoryUrl>https://github.com/panoramicdata/MicrosoftDynamics.Api/</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReleaseNotes>
+		10.0.42
+
+		Internal refactor only. No public API or behaviour change; no action needed on upgrade.
+		The JSON parsing and access token acquisition inside MicrosoftDynamicsClient moved to
+		separate internal types, reducing the complexity of a single oversized file.
+
+		10.0.28
+
 		Security fix: sensitive HTTP headers are now redacted in diagnostic output.
 
 		Previously the Authorization header, and therefore a usable access token, was written verbatim
@@ -37,7 +45,8 @@
 		Breaking change to message text: headers in the failure exception message are now rendered as
 		"Name=value" rather than "Name: value". Code that parses that message will need updating.
 
-		Consumers should upgrade and then review existing logs for previously captured tokens.
+		Consumers upgrading from a version earlier than 10.0.28 should review existing logs for
+		previously captured tokens.
 	</PackageReleaseNotes>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
