@@ -1,5 +1,8 @@
 ﻿namespace MicrosoftDynamics.Api.Test;
 
+// Every test deriving from this base calls a live Dynamics 365 instance with credentials from user
+// secrets. CI has none, so the coverage job excludes them with --filter "Category!=Integration".
+[Trait("Category", "Integration")]
 public abstract class TestBase(ITestOutputHelper output) : IDisposable
 {
 	private MicrosoftDynamicsClient? _client;
