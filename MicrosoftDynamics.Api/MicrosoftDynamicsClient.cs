@@ -24,10 +24,12 @@ public class MicrosoftDynamicsClient : IDisposable
 
 		var baseUri = new Uri(Options.Uri!, $"api/data/v{Options.OdataApiVersion}/");
 
-		_httpClient = new HttpClient
+#pragma warning disable CA2000 // Owned by the HttpClient, disposed with it
+		_httpClient = new HttpClient(new ReadOnlyGuardHandler(Options))
 		{
 			BaseAddress = baseUri
 		};
+#pragma warning restore CA2000
 
 		var oDataClientOptions = new ODataClientOptions
 		{

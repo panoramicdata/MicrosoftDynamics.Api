@@ -47,6 +47,11 @@ public class MicrosoftDynamicsClientOptions
 	public bool LogMetadata { get; set; } = true;
 
 	/// <summary>
+	/// Whether the client refuses every request that is not a read (GET, HEAD or OPTIONS).
+	/// </summary>
+	public bool IsReadOnly { get; set; }
+
+	/// <summary>
 	/// Validate the properties
 	/// </summary>
 	/// <exception cref="ConfigurationException">Thrown if the properties are invalid.</exception>
