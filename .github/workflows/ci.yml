@@ -99,14 +99,14 @@ jobs:
     # The test project is an xunit v3 Microsoft.Testing.Platform application, so coverage is
     # collected by running it directly (Microsoft.Testing.Extensions.CodeCoverage) rather than
     # through "dotnet test". On Linux the executable has no ".exe" extension. The report is written
-    # to bin/Debug/net10.0/TestResults/coverage.cobertura.xml.
+    # to bin/Debug/net11.0/TestResults/coverage.cobertura.xml.
     #
     # CI runs only the tests that need no credentials. Everything deriving from TestBase calls a live
     # Dynamics 365 instance with credentials from user secrets, which CI does not have, and
     # xunit.runner.json sets failSkips: true, so those tests are tagged Category=Integration and
     # filtered out here.
     - name: Run tests with coverage
-      working-directory: MicrosoftDynamics.Api.Test/bin/Debug/net10.0
+      working-directory: MicrosoftDynamics.Api.Test/bin/Debug/net11.0
       run: >-
         ./MicrosoftDynamics.Api.Test
         --coverage
@@ -122,7 +122,7 @@ jobs:
       uses: codacy/codacy-coverage-reporter-action@v1
       with:
         project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
-        coverage-reports: MicrosoftDynamics.Api.Test/bin/Debug/net10.0/TestResults/coverage.cobertura.xml
+        coverage-reports: MicrosoftDynamics.Api.Test/bin/Debug/net11.0/TestResults/coverage.cobertura.xml
 
     - name: Upload coverage artifact
       if: always()
@@ -130,5 +130,5 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: coverage
-        path: MicrosoftDynamics.Api.Test/bin/Debug/net10.0/TestResults/coverage.cobertura.xml
+        path: MicrosoftDynamics.Api.Test/bin/Debug/net11.0/TestResults/coverage.cobertura.xml
         retention-days: 7
