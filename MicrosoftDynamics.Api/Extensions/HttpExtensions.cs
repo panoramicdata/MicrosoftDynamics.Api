@@ -96,7 +96,7 @@ internal static class HttpExtensions
 			.ReadAsStringAsync()
 			.ConfigureAwait(false);
 
-		return contentString.StartsWith('{')
+		return contentString is ['{', ..]
 			? FormatJson(contentString)
 			: contentString;
 	}
